@@ -1,0 +1,845 @@
+<title>ピル服用ノート</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<style>
+/* Layout: one narrow column of stacked panels — today first, then the cycle "blister sheet", stock, settings */
+:root {
+  --bg: #EEF2F0;
+  --surface: #FFFFFF;
+  --ink: #1C2826;
+  --muted: #5D6D6A;
+  --line: #D6DFDC;
+  --accent: #2C7A6A;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #DAEDE7;
+  --bleed: #CF5249;
+  --bleed-soft: #F8E0DD;
+  --warn: #A86A12;
+  --warn-soft: #FAEDD4;
+  --rest: #7C86A0;
+  --rest-soft: #E4E7EF;
+  --ghost: #E6ECEA;
+  --font-display: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", system-ui, sans-serif;
+  --font-body: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", system-ui, sans-serif;
+  --r: 18px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1514; --surface: #182120; --ink: #E3EBE9; --muted: #92A39F; --line: #2A3633;
+    --accent: #5CC0A9; --accent-ink: #0C1A17; --accent-soft: #1E3A33;
+    --bleed: #F07C72; --bleed-soft: #3B2320; --warn: #E2A84A; --warn-soft: #382C16;
+    --rest: #9DA7C4; --rest-soft: #262B3A; --ghost: #212B29;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1514; --surface: #182120; --ink: #E3EBE9; --muted: #92A39F; --line: #2A3633;
+  --accent: #5CC0A9; --accent-ink: #0C1A17; --accent-soft: #1E3A33;
+  --bleed: #F07C72; --bleed-soft: #3B2320; --warn: #E2A84A; --warn-soft: #382C16;
+  --rest: #9DA7C4; --rest-soft: #262B3A; --ghost: #212B29;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--bg); }
+body { color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.6; -webkit-tap-highlight-color: transparent; }
+.app {
+  max-width: 520px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 18px 40px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+h1, h2, .num { font-family: var(--font-display); }
+h1 { font-size: 17px; margin: 0; font-weight: 700; letter-spacing: .02em; }
+h2 { font-size: 15px; margin: 0; font-weight: 700; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.top .date { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.panel { background: var(--surface); border-radius: var(--r); padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.between { justify-content: space-between; }
+
+/* Today */
+.today { display: grid; grid-template-columns: 116px 1fr; gap: 16px; align-items: center; }
+.ring { position: relative; width: 116px; height: 116px; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring .lbl { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; }
+.ring .big { font-family: var(--font-display); font-size: 38px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ring .of { font-size: 12px; color: var(--muted); }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 99px; letter-spacing: .03em; width: fit-content; }
+.chip.take { background: var(--accent-soft); color: var(--accent); }
+.chip.rest { background: var(--rest-soft); color: var(--rest); }
+.chip.bleed { background: var(--bleed-soft); color: var(--bleed); }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
+.today-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.today-info .head { font-family: var(--font-display); font-size: 18px; font-weight: 700; line-height: 1.35; text-wrap: balance; }
+.msg { font-size: 14px; line-height: 1.65; background: var(--bg); border-radius: 12px; padding: 10px 12px; }
+.msg b { font-weight: 700; }
+.msg.next { background: var(--rest-soft); }
+.actions { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn { border: 0; border-radius: 14px; padding: 14px 16px; font-weight: 700; font-size: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.done { background: var(--accent-soft); color: var(--accent); }
+.btn.outline { background: transparent; border: 1.5px solid var(--line); color: var(--ink); }
+.btn.bleed-on { background: var(--bleed-soft); color: var(--bleed); border: 1.5px solid transparent; }
+.btn.sm { min-height: 40px; padding: 8px 14px; font-size: 14px; border-radius: 12px; }
+.btn.danger { background: var(--bleed-soft); color: var(--bleed); }
+.btn svg { width: 20px; height: 20px; flex: none; }
+.check-btn { justify-content: flex-start; }
+.check-btn .box { width: 24px; height: 24px; border-radius: 7px; border: 2px solid currentColor; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.check-btn.done .box { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.check-btn .box svg { width: 16px; height: 16px; }
+.check-btn .box.x { border: 0; color: var(--warn); }
+.check-btn .box.x svg { width: 20px; height: 20px; }
+.stepper { display: flex; align-items: center; gap: 12px; }
+.stepper .icon-btn { width: 44px; height: 44px; font-size: 22px; font-weight: 700; }
+.stepper .num { font-size: 26px; font-weight: 700; min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; }
+.reasons { display: flex; flex-wrap: wrap; gap: 6px; }
+.reason { border: 1px solid var(--line); background: transparent; border-radius: 99px; padding: 6px 12px; font-size: 13px; }
+.reason[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.cell.ex::before { content: ""; position: absolute; left: -1px; top: -1px; width: 34%; height: 34%; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 1.5px var(--surface); }
+.drop { width: 10px; height: 13px; flex: none; }
+
+/* Alerts */
+.alert { border-radius: 14px; padding: 12px 14px; font-size: 14px; display: flex; flex-direction: column; gap: 8px; }
+.alert.warn { background: var(--warn-soft); color: var(--ink); }
+.alert.warn strong { color: var(--warn); }
+.alert.info { background: var(--rest-soft); }
+.alert-head { display: flex; gap: 8px; align-items: flex-start; }
+.alert-head > span { flex: 1; min-width: 0; }
+.close-x { flex: none; width: 32px; height: 32px; margin: -6px -8px 0 0; border: 0; background: transparent; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); }
+.close-x svg { width: 16px; height: 16px; }
+.linkchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.linkchip { border: 1px solid var(--warn); background: transparent; border-radius: 99px; padding: 2px 10px; font-size: 13px; color: var(--warn); font-variant-numeric: tabular-nums; }
+
+/* Cycle sheet */
+.cyc-nav { display: flex; align-items: center; gap: 6px; }
+.icon-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: transparent; display: inline-flex; align-items: center; justify-content: center; }
+.icon-btn:disabled { opacity: .3; cursor: default; }
+.icon-btn svg { width: 18px; height: 18px; }
+.blk { display: flex; flex-direction: column; gap: 5px; }
+.blk-l { font-size: 11px; color: var(--muted); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.cells { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; }
+.cell { position: relative; aspect-ratio: 1; max-width: 100%; border-radius: 50%; border: 0; padding: 0; background: var(--ghost); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--muted); }
+.cell.tk { background: var(--accent); color: var(--accent-ink); }
+.cell.ms { background: transparent; box-shadow: inset 0 0 0 1.5px var(--warn); color: var(--warn); }
+.cell.fut { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.cell.now { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); }
+.cell.ms.now { box-shadow: inset 0 0 0 1.5px var(--warn), 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); }
+.cell.fut.now { box-shadow: inset 0 0 0 1px var(--line), 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); }
+.cell.brk { border-radius: 6px; background: var(--rest-soft); color: var(--rest); }
+.cell.bl::after { content: ""; position: absolute; right: -1px; bottom: -1px; width: 38%; height: 38%; border-radius: 50%; background: var(--bleed); box-shadow: 0 0 0 1.5px var(--surface); }
+.cell:disabled { cursor: default; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; position: relative; }
+.stats { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.stats b { font-family: var(--font-display); font-size: 18px; color: var(--ink); font-variant-numeric: tabular-nums; margin-right: 2px; }
+
+/* Stock */
+.stock-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stat { background: var(--bg); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stat .k { font-size: 12px; color: var(--muted); letter-spacing: .03em; }
+.stat .v { font-family: var(--font-display); font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.25; }
+.stat .v small { font-size: 13px; font-weight: 500; margin-left: 2px; }
+.stat .s { font-size: 12px; color: var(--muted); }
+.start-field { max-width: 240px; }
+.start-field input[type="date"] { height: 40px; min-height: 40px; padding-block: 0; border-radius: 12px; line-height: 40px; }
+.receive { display: flex; flex-direction: column; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.stat.warn { background: var(--warn-soft); }
+.stat.warn .v { color: var(--warn); }
+.pillbar { display: flex; gap: 3px; flex-wrap: wrap; }
+.pillbar i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.pillbar i.off { background: var(--line); }
+
+/* Forms */
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field label, .field .lab { font-size: 12px; color: var(--muted); letter-spacing: .03em; }
+input[type="date"], input[type="number"], input[type="time"], textarea {
+  font: inherit; font-size: 16px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; width: 100%; min-width: 0;
+}
+input[type="date"], input[type="time"] { min-height: 44px; -webkit-appearance: none; appearance: none; }
+textarea { min-height: 90px; font-size: 13px; font-family: ui-monospace, monospace; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; margin-top: 2px; }
+details.panel { gap: 0; }
+details.panel > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+details.panel > summary::-webkit-details-marker { display: none; }
+details.panel > summary svg { width: 18px; height: 18px; transition: transform .2s; }
+details[open].panel > summary svg { transform: rotate(180deg); }
+details.panel > .inner { display: flex; flex-direction: column; gap: 18px; padding-top: 16px; }
+.sect { display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
+.sect:first-child { border-top: 0; padding-top: 0; }
+.list { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.tiny-btn { border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 3px 10px; font-size: 12px; color: var(--muted); }
+.tiny-btn.armed { border-color: var(--bleed); color: var(--bleed); }
+.foot { font-size: 12px; color: var(--muted); line-height: 1.7; display: flex; flex-direction: column; gap: 6px; padding-inline: 4px; }
+.sync { display: inline-flex; align-items: center; gap: 6px; }
+.sync i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.sync.cloud i { background: var(--accent); }
+.sync.error i { background: var(--bleed); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 99px; font-size: 14px; z-index: 50; }
+
+/* Day sheet */
+.sheet-back { position: fixed; inset: 0; background: rgba(10, 20, 18, .45); z-index: 40; display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: var(--surface); width: 100%; max-width: 520px; border-radius: 22px 22px 0 0; display: flex; flex-direction: column; gap: 14px;
+  padding-top: 20px; padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px));
+  max-height: 88vh; overflow-y: auto; }
+.sheet .handle { width: 40px; height: 4px; border-radius: 4px; background: var(--line); align-self: center; margin-top: -8px; }
+.sheet h3 { font-family: var(--font-display); font-size: 20px; margin: 0; }
+.toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* Onboarding */
+.ob-hero { display: flex; flex-direction: column; gap: 6px; }
+.ob-hero .num { font-size: 22px; font-weight: 700; line-height: 1.4; text-wrap: balance; }
+.rules { margin: 0; padding-left: 1.2em; font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
+
+@media (max-width: 360px) {
+  .today { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  .today-info { align-items: center; }
+  .stock-grid, .form-grid { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app" id="app"></div>
+<div class="sheet-back" id="sheetBack" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="日ごとの記録"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+  const DEF = { perSheet: 28, sheetsPerVisit: 3, newSheetAfterBreak: true, doseTime: '21:00', autoTake: true, showExtra: false, maxDays: 120, minDay: 25, bleedTrigger: 3, breakDays: 4, warnDays: 14 };
+  const LS = 'doroechi-note-v1';
+  const WD = '日月火水木金土';
+  const pad = n => String(n).padStart(2, '0');
+  const ds = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parse = s => { const [a, b, c] = s.split('-').map(Number); return new Date(a, b - 1, c); };
+  const add = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return ds(d); };
+  const diff = (a, b) => Math.round((parse(b) - parse(a)) / 864e5);
+  const todayStr = () => ds(new Date());
+  const fmt = s => { const d = parse(s); const y = d.getFullYear() !== new Date().getFullYear() ? d.getFullYear() + '/' : ''; return `${y}${d.getMonth() + 1}/${d.getDate()}(${WD[d.getDay()]})`; };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const isDate = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+
+  const ICON = {
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    drop: '<svg class="drop" viewBox="0 0 10 13"><path d="M5 0C5 0 0 6 0 8.5A5 4.5 0 0 0 10 8.5C10 6 5 0 5 0Z" fill="currentColor"/></svg>',
+    cross: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg>',
+    right: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg>',
+    down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>'
+  };
+
+  function normalize(s) {
+    if (!s || typeof s !== 'object') return null;
+    return {
+      setup: !!s.setup,
+      startDate: isDate(s.startDate) ? s.startDate : todayStr(),
+      settings: { ...DEF, ...(s.settings || {}) },
+      inv: s.inv && isDate(s.inv.date) ? { date: s.inv.date, unopened: +s.inv.unopened || 0, current: +s.inv.current || 0 } : { date: todayStr(), unopened: 0, current: 0 },
+      receipts: Array.isArray(s.receipts) ? s.receipts.filter(r => r && isDate(r.date)) : [],
+      days: s.days && typeof s.days === 'object' ? s.days : {},
+      manualBreaks: Array.isArray(s.manualBreaks) ? s.manualBreaks.filter(isDate) : [],
+      seenMiss: Array.isArray(s.seenMiss) ? s.seenMiss.filter(isDate) : [],
+      nextVisit: isDate(s.nextVisit) ? s.nextVisit : '',
+      updatedAt: +s.updatedAt || 0
+    };
+  }
+  function loadLocal() { try { return normalize(JSON.parse(localStorage.getItem(LS))); } catch { return null; } }
+  function saveLocal() { try { localStorage.setItem(LS, JSON.stringify(state)); } catch {} }
+
+  let state = loadLocal();
+  let viewCycle = null;
+  let openDate = null;
+  let settingsOpen = false;
+  let armed = null;
+  let syncMode = 'local';
+
+  // ---------- Regimen engine ----------
+  // Walks day by day from the start date. Each take day counts up to maxDays; a break of breakDays
+  // starts the day after day maxDays, or after bleedTrigger consecutive bleeding days counted from day minDay.
+  function build(st, until) {
+    const S = st.settings;
+    const list = [], idx = {}, cycles = [];
+    const mb = new Set(st.manualBreaks);
+    let d = st.startDate, phase = 'take', cycle = 1, cday = 1, bday = 0, streak = 0, breakNext = null;
+    let cur = { no: 1, start: d, end: null, breakStart: null, reason: null };
+    cycles.push(cur);
+    let guard = 0;
+    while (d <= until && guard++ < 4000) {
+      if (phase === 'take' && (breakNext || (mb.has(d) && cday > 1))) {
+        cur.end = add(d, -1); cur.breakStart = d; cur.reason = breakNext || 'manual';
+        phase = 'break'; bday = 1; breakNext = null;
+      } else if (phase === 'break' && bday > S.breakDays) {
+        phase = 'take'; cycle++; cday = 1; streak = 0;
+        cur = { no: cycle, start: d, end: null, breakStart: null, reason: null };
+        cycles.push(cur);
+      }
+      const e = { date: d, phase, cycle };
+      if (phase === 'take') {
+        const rec = st.days[d] || {};
+        streak = rec.b && cday >= S.minDay ? streak + 1 : 0;
+        e.cday = cday; e.streak = streak;
+        if (cday >= S.maxDays) { breakNext = 'max'; e.trig = 'max'; }
+        else if (streak >= S.bleedTrigger) { breakNext = 'bleed'; e.trig = 'bleed'; }
+        cday++;
+      } else {
+        e.bday = bday; bday++;
+      }
+      list.push(e); idx[d] = e;
+      d = add(d, 1);
+    }
+    return { list, idx, cycles };
+  }
+
+  // A take day counts as taken when recorded, or automatically (autoTake) unless marked "not taken" (x).
+  function takenOn(st, d, e, T) {
+    if (!e || e.phase !== 'take' || d > T) return false;
+    const r = st.days[d] || {};
+    if (r.x) return false;
+    return !!r.t || !!st.settings.autoTake;
+  }
+  const EXTRA_REASONS = ['なくした・落とした', '吐いたので追加で飲んだ', '飲み忘れ分を追加で飲んだ', 'その他'];
+
+  // Simulates the tablets in hand: actual doses up to today, assumed daily doses after, to find the run-out day.
+  function inventory(st, tl, T) {
+    const S = st.settings;
+    let unopened = st.inv.unopened, cur = st.inv.current, now = null, runOut = null;
+    const rec = {};
+    st.receipts.forEach(r => { rec[r.date] = (rec[r.date] || 0) + (+r.sheets || 0); });
+    const takeOne = () => {
+      if (cur <= 0) { if (unopened > 0) { unopened--; cur = S.perSheet; } else return false; }
+      cur--; return true;
+    };
+    for (const e of tl.list) {
+      if (e.date < st.inv.date) continue;
+      if (e.date > T && !now) now = { unopened, cur };
+      if (rec[e.date] && e.date !== st.inv.date) unopened += rec[e.date];
+      else if (rec[e.date] && e.date === st.inv.date && st.receipts.some(r => r.date === e.date && r.after)) unopened += rec[e.date];
+      if (e.phase === 'take' && e.cday === 1 && e.cycle > 1 && S.newSheetAfterBreak && e.date !== st.inv.date && cur > 0) cur = 0;
+      const dr = st.days[e.date] || {};
+      const extra = e.date <= T ? Math.max(0, +dr.extra || 0) : 0;
+      if (e.phase !== 'take') {
+        for (let i = 0; i < extra; i++) takeOne();
+        if (e.date === T) now = { unopened, cur };
+        continue;
+      }
+      if (e.date <= T) {
+        const tk = takenOn(st, e.date, e, T);
+        if (tk) takeOne();
+        for (let i = 0; i < extra; i++) takeOne();
+        if (e.date === T) {
+          now = { unopened, cur };
+          if (!tk && !dr.x && !takeOne()) { runOut = e.date; break; }
+        }
+      } else if (!takeOne()) { runOut = e.date; break; }
+    }
+    if (!now) now = { unopened, cur };
+    return { ...now, total: now.unopened * S.perSheet + now.cur, runOut };
+  }
+
+  // ---------- Persistence ----------
+  let docRef = null, writeChain = Promise.resolve(), writeTimer = null;
+  function commit() {
+    state.updatedAt = Date.now();
+    saveLocal();
+    pushRemote();
+    render();
+  }
+  function pushRemote() {
+    if (!docRef) return;
+    clearTimeout(writeTimer);
+    writeTimer = setTimeout(() => {
+      const payload = { json: JSON.stringify(state), updatedAt: state.updatedAt };
+      writeChain = writeChain.then(() => docRef.set(payload)).then(() => setSync('cloud')).catch(() => setSync('error'));
+    }, 500);
+  }
+  function setSync(m) { syncMode = m; const el = document.getElementById('sync'); if (el) el.outerHTML = syncHtml(); }
+  function syncHtml() {
+    const t = { cloud: 'claude.ai アカウントに保存中（他の端末とも同期）', local: 'この端末のブラウザにだけ保存しています', error: 'クラウド保存に失敗。端末には保存済みです' }[syncMode];
+    return `<span class="sync ${syncMode}" id="sync"><i></i>${t}</span>`;
+  }
+  async function initDb() {
+    const c = window.claude;
+    if (!c || typeof c.use !== 'function') return;
+    try {
+      const [db, user] = await Promise.all([c.use('db'), c.use('user')]);
+      if (!db || !user) return;
+      const id = await user.id();
+      if (!id) return;
+      docRef = db.collection('data/users/' + id).doc('pill');
+      docRef.onSnapshot(snap => {
+        if (snap.metadata && snap.metadata.hasPendingWrites) return;
+        setSync('cloud');
+        const r = snap.exists ? snap.data() : null;
+        const rAt = r ? +r.updatedAt || 0 : 0;
+        if (r && r.json && rAt > (state ? state.updatedAt : 0)) {
+          try { const n = normalize(JSON.parse(r.json)); if (n) { state = n; saveLocal(); render(); } } catch {}
+        } else if (state && state.updatedAt > rAt) {
+          pushRemote();
+        }
+      }, () => setSync('error'));
+    } catch { setSync('error'); }
+  }
+
+  // ---------- Rendering ----------
+  const app = document.getElementById('app');
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, 1800);
+  }
+
+  function render() {
+    if (!state || !state.setup) { app.innerHTML = onboardingHtml(); return; }
+    const T = todayStr();
+    const S = state.settings;
+    const tl = build(state, add(T, 500));
+    const inv = inventory(state, tl, T);
+    const e = tl.idx[T];
+    const curNo = e ? e.cycle : 1;
+    const maxNo = tl.cycles.filter(c => c.start <= T).length || 1;
+    if (viewCycle == null || viewCycle > maxNo) viewCycle = curNo;
+    app.innerHTML = `
+      <header class="top"><h1>ピル服用ノート</h1><span class="date">${fmt(T)}</span></header>
+      ${todayHtml(e, T, tl)}
+      ${alertsHtml(T, tl, inv)}
+      ${cycleHtml(tl, T, maxNo)}
+      ${stockHtml(inv, T)}
+      ${settingsHtml()}
+      <footer class="foot">${syncHtml()}<span>服用ルールの判定は入力した記録をもとにした目安です。添付文書と医師の指示を優先してください。</span></footer>`;
+    if (openDate) renderSheet(openDate);
+  }
+
+  function ring(frac, color) {
+    const r = 50, c = 2 * Math.PI * r;
+    return `<svg viewBox="0 0 116 116" aria-hidden="true"><circle cx="58" cy="58" r="${r}" fill="none" stroke="var(--ghost)" stroke-width="10"/><circle cx="58" cy="58" r="${r}" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(c * Math.min(1, frac)).toFixed(1)} ${c.toFixed(1)}"/></svg>`;
+  }
+
+  function todayHtml(e, T, tl) {
+    const S = state.settings;
+    if (!e) {
+      return `<section class="panel"><div class="msg"><b>${fmt(state.startDate)}</b> から1錠目を飲み始めます。あと${diff(T, state.startDate)}日です。</div></section>`;
+    }
+    const rec = state.days[T] || {};
+    if (e.phase === 'break') {
+      const bStart = add(T, -(e.bday - 1));
+      const resume = add(bStart, S.breakDays);
+      return `<section class="panel" aria-label="今日">
+        <div class="today">
+          <div class="ring">${ring(e.bday / S.breakDays, 'var(--rest)')}<div class="lbl"><span class="big num">${e.bday}</span><span class="of">休薬 / ${S.breakDays}日</span></div></div>
+          <div class="today-info">
+            <span class="chip rest">休薬期間</span>
+            <div class="head">今日は飲みません</div>
+            <div class="small muted">${fmt(bStart)}〜${fmt(add(resume, -1))}</div>
+          </div>
+        </div>
+        <div class="msg next"><b>${fmt(resume)}</b> から服用を再開します。出血が続いていても止まっていても再開します。${S.newSheetAfterBreak ? '新しいシートの1錠目から飲み始めます。' : ''}</div>
+        <div class="actions"><span></span>${bleedBtn(T, rec)}</div>
+      </section>`;
+    }
+    const cycStart = add(T, -(e.cday - 1));
+    const maxDate = add(cycStart, S.maxDays - 1);
+    let msg;
+    if (e.trig === 'max') {
+      msg = `今日で${S.maxDays}日目です。<b>明日 ${fmt(add(T, 1))} から${S.breakDays}日間休薬</b>し、${fmt(add(T, S.breakDays + 1))} に再開します。`;
+    } else if (e.trig === 'bleed') {
+      msg = `${S.minDay}日目以降の出血が${S.bleedTrigger}日続きました。<b>明日 ${fmt(add(T, 1))} から${S.breakDays}日間休薬</b>し、${fmt(add(T, S.breakDays + 1))} に再開します。`;
+    } else if (e.cday < S.minDay) {
+      msg = `${S.minDay - 1}日目（${fmt(add(cycStart, S.minDay - 2))}）までは、出血があっても休まず毎日飲みます。${rec.b ? '今日の出血は休薬の判定に数えません。' : ''}`;
+    } else {
+      msg = e.streak > 0
+        ? `出血が <b>${e.streak}日連続</b>。あと${S.bleedTrigger - e.streak}日続いたら翌日から休薬します。`
+        : `出血が${S.bleedTrigger}日続いたら、翌日から${S.breakDays}日間休薬します。出血がなければ最長 ${fmt(maxDate)}（${S.maxDays}日目）まで続けます。`;
+    }
+    const taken = takenOn(state, T, e, T);
+    const auto = taken && !rec.t;
+    const chip = e.trig ? '<span class="chip warn">明日から休薬</span>' : (e.cday >= S.minDay ? '<span class="chip take">休薬判定の期間</span>' : '<span class="chip take">連続服用</span>');
+    return `<section class="panel" aria-label="今日">
+      <div class="today">
+        <div class="ring">${ring(e.cday / S.maxDays, 'var(--accent)')}<div class="lbl"><span class="big num">${e.cday}</span><span class="of">日目 / ${S.maxDays}</span></div></div>
+        <div class="today-info">
+          ${chip}
+          <div class="head">${taken ? (auto ? '今日の分は自動で服用済み' : '今日の分は飲みました') : rec.x ? '今日は飲まなかった' : '今日の1錠はまだです'}</div>
+          <div class="small muted">服用時刻 ${esc(S.doseTime)} ・ 第${e.cycle}周期</div>
+        </div>
+      </div>
+      <div class="msg">${msg}</div>
+      <div class="actions">
+        ${takeBtn(T, taken, auto)}
+        ${bleedBtn(T, rec)}
+      </div>
+      ${extraSummary(rec)}
+      <button class="btn outline sm" data-act="open" data-date="${T}">錠剤をなくした・余分に飲んだときの記録</button>
+    </section>`;
+  }
+  function takeBtn(d, taken, auto) {
+    return `<button class="btn check-btn ${taken ? 'done' : 'outline'}" data-act="take" data-date="${d}" role="checkbox" aria-checked="${taken}">
+      <span class="box${taken ? '' : ' x'}">${taken ? ICON.check : ICON.cross}</span>${taken ? (auto ? '服用済み（自動）' : '服用済み') : '飲まなかった'}</button>`;
+  }
+  function extraSummary(rec) {
+    if (!rec.extra || !state.settings.showExtra) return '';
+    return `<div class="msg small">余分に使った錠剤 <b>${rec.extra}錠</b>${rec.why ? `（${esc(rec.why)}）` : ''}・在庫から差し引いています</div>`;
+  }
+  function bleedBtn(d, rec) {
+    return `<button class="btn ${rec.b ? 'bleed-on' : 'outline'}" data-act="bleed" data-date="${d}" aria-pressed="${!!rec.b}">${ICON.drop}${rec.b ? '出血あり' : '出血'}</button>`;
+  }
+
+  function alertsHtml(T, tl, inv) {
+    const S = state.settings;
+    const out = [];
+    const miss = [];
+    for (let i = 14; i >= 1; i--) {
+      const d = add(T, -i), e = tl.idx[d];
+      if (e && e.phase === 'take' && !takenOn(state, d, e, T) && !state.seenMiss.includes(d)) miss.push(d);
+    }
+    if (miss.length) {
+      out.push(`<div class="alert warn"><div class="alert-head"><span><strong>飲まなかった日</strong>があります。間違いならタップして直してください。飲み忘れた場合は添付文書の指示に従い、不安なときは医師・薬剤師に相談してください。</span><button class="close-x" data-act="seenmiss" data-dates="${miss.join(',')}" aria-label="このお知らせを消す">${ICON.cross}</button></div>
+        <div class="linkchips">${miss.map(d => `<button class="linkchip" data-act="open" data-date="${d}">${fmt(d)}</button>`).join('')}</div></div>`);
+    }
+    if (inv.runOut) {
+      const left = diff(T, inv.runOut);
+      if (state.nextVisit && state.nextVisit >= inv.runOut) {
+        out.push(`<div class="alert warn"><span><strong>受診日まで薬が足りません。</strong>${fmt(inv.runOut)} の分から不足します（予約日 ${fmt(state.nextVisit)}）。予約を早めましょう。</span></div>`);
+      } else if (!state.nextVisit && left <= S.warnDays) {
+        out.push(`<div class="alert warn"><span><strong>あと${Math.max(0, left)}日分で薬がなくなります。</strong>${fmt(inv.runOut)} より前に産婦人科を受診してください。</span></div>`);
+      }
+    }
+    if (state.nextVisit && state.nextVisit >= T && diff(T, state.nextVisit) <= 3) {
+      out.push(`<div class="alert info"><span>${state.nextVisit === T ? '今日' : fmt(state.nextVisit)}は受診日です。薬を受け取ったら下の「受け取りを記録」を押してください。</span></div>`);
+    }
+    return out.join('');
+  }
+
+  function cycleHtml(tl, T, maxNo) {
+    const S = state.settings;
+    const c = tl.cycles[viewCycle - 1];
+    if (!c) return '';
+    const end = c.end || add(c.start, S.maxDays - 1);
+    const n = diff(c.start, end) + 1;
+    let taken = 0, bleed = 0, missed = 0, extra = 0;
+    let blocks = '';
+    for (let s = 0; s < n; s += S.perSheet) {
+      const m = Math.min(S.perSheet, n - s);
+      let cells = '';
+      for (let i = 0; i < m; i++) {
+        const d = add(c.start, s + i), cd = s + i + 1, rec = state.days[d] || {}, e = tl.idx[d];
+        const tk = takenOn(state, d, e, T);
+        if (d <= T) { if (tk) taken++; else if (d < T || rec.x) missed++; if (rec.b) bleed++; extra += +rec.extra || 0; }
+        const cls = ['cell', d > T ? 'fut' : tk ? 'tk' : (d < T || rec.x) ? 'ms' : 'fut'];
+        if (d === T) cls.push('now');
+        if (rec.b) cls.push('bl');
+        if (rec.extra && d <= T) cls.push('ex');
+        const status = d > T ? '予定' : tk ? '服用済み' : (d < T || rec.x) ? '飲まなかった' : '未記録';
+        const label = cd === 1 || cd === S.minDay || (e && e.trig) ? cd : '';
+        cells += `<button class="${cls.join(' ')}" data-act="open" data-date="${d}" ${d > add(T, 1) ? 'disabled' : ''} aria-label="${fmt(d)} ${cd}日目 ${status}${rec.b ? ' 出血あり' : ''}">${label}</button>`;
+      }
+      blocks += `<div class="blk"><div class="blk-l">${s + 1}–${s + m}日目${S.newSheetAfterBreak && S.perSheet === 28 ? `・${s / S.perSheet + 1}シート目` : ''}</div><div class="cells">${cells}</div></div>`;
+    }
+    if (c.breakStart) {
+      let cells = '';
+      for (let i = 0; i < S.breakDays; i++) {
+        const d = add(c.breakStart, i), rec = state.days[d] || {};
+        if (d <= T) extra += +rec.extra || 0;
+        cells += `<button class="cell brk${rec.b ? ' bl' : ''}${rec.extra && d <= T ? ' ex' : ''}${d === T ? ' now' : ''}" data-act="open" data-date="${d}" ${d > add(T, 1) ? 'disabled' : ''} aria-label="${fmt(d)} 休薬${i + 1}日目">休</button>`;
+      }
+      blocks += `<div class="blk"><div class="blk-l">休薬 ${fmt(c.breakStart)}〜${fmt(add(c.breakStart, S.breakDays - 1))}</div><div class="cells">${cells}</div></div>`;
+    }
+    const ongoing = !c.breakStart || c.breakStart > T;
+    const reason = { max: `${S.maxDays}日到達で休薬`, bleed: '出血3日連続で休薬', manual: '手動で休薬' }[c.reason];
+    const sub = ongoing && c.start <= T
+      ? (c.reason === 'bleed' || c.reason === 'manual' ? `${fmt(c.start)}〜 ・ ${reason}予定` : `${fmt(c.start)}〜 ・ 最長 ${fmt(end)} まで`)
+      : `${fmt(c.start)}〜${fmt(end)} ・ ${reason || ''}`;
+    return `<section class="panel" aria-label="周期">
+      <div class="row between">
+        <div><h2>第${c.no}周期</h2><div class="small muted">${sub}</div></div>
+        <div class="cyc-nav">
+          <button class="icon-btn" data-act="cyc" data-d="-1" ${viewCycle <= 1 ? 'disabled' : ''} aria-label="前の周期">${ICON.left}</button>
+          <button class="icon-btn" data-act="cyc" data-d="1" ${viewCycle >= maxNo ? 'disabled' : ''} aria-label="次の周期">${ICON.right}</button>
+        </div>
+      </div>
+      ${c.no === 1 ? `<div class="field start-field"><label for="cStart">第1周期の開始日（1錠目を飲んだ日）</label><input type="date" id="cStart" data-set="startDate" value="${state.startDate}" max="${add(T, 60)}"></div>` : ''}
+      <div class="stats"><span><b>${taken}</b>日 服用</span><span><b>${bleed}</b>日 出血</span>${missed ? `<span><b>${missed}</b>日 飲まなかった</span>` : ''}${extra ? `<span><b>${extra}</b>錠 余分に使用</span>` : ''}</div>
+      ${blocks}
+      <div class="legend">
+        <span><i style="background:var(--accent)"></i>服用済み</span>
+        <span><i style="box-shadow:inset 0 0 0 1.5px var(--warn)"></i>飲まなかった</span>
+        <span><i style="background:var(--warn);width:8px;height:8px"></i>余分に使用</span>
+        <span><i style="box-shadow:inset 0 0 0 1px var(--line)"></i>予定</span>
+        <span><i style="background:var(--bleed);width:8px;height:8px"></i>出血</span>
+        <span>丸をタップして記録を修正</span>
+      </div>
+    </section>`;
+  }
+
+  function stockHtml(inv, T) {
+    const S = state.settings;
+    const left = inv.runOut ? diff(T, inv.runOut) : null;
+    const warn = left != null && left <= S.warnDays;
+    const dots = Array.from({ length: S.perSheet }, (_, i) => `<i class="${i < inv.cur ? '' : 'off'}"></i>`).join('');
+    const recent = state.receipts.map((r, i) => ({ ...r, i })).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
+    return `<section class="panel" aria-label="薬の残り">
+      <h2>薬の残りと受診</h2>
+      <div class="receive">
+        <div class="form-grid">
+          <div class="field"><label for="rcDate">受け取った日</label><input type="date" id="rcDate" value="${T}"></div>
+          <div class="field"><label for="rcSheets">シート数</label><input type="number" id="rcSheets" min="1" max="12" value="${S.sheetsPerVisit}" inputmode="numeric"></div>
+        </div>
+        <button class="btn primary sm" data-act="receive">受け取りを記録</button>
+        ${recent.length ? `<ul class="list">${recent.map(r => `<li><span>${fmt(r.date)} ・ ${r.sheets}シート受け取り</span><button class="tiny-btn ${armed === 'rc' + r.i ? 'armed' : ''}" data-act="delrc" data-i="${r.i}">${armed === 'rc' + r.i ? 'もう一度押すと削除' : '削除'}</button></li>`).join('')}</ul>` : ''}
+      </div>
+      <div class="stock-grid">
+        <div class="stat"><span class="k">手元の錠数</span><span class="v">${inv.total}<small>錠</small></span><span class="s">未開封 ${inv.unopened}シート + 開封中 ${inv.cur}錠</span></div>
+        <div class="stat ${warn ? 'warn' : ''}"><span class="k">薬が足りなくなる日</span><span class="v">${inv.runOut ? fmt(inv.runOut).replace(/\((.)\)$/, '<small>($1)</small>') : '—'}</span><span class="s">${inv.runOut ? `あと${Math.max(0, left)}日 ・ 休薬日も計算済み` : '500日以上先'}</span></div>
+      </div>
+      <div class="field"><span class="lab">開封中のシート</span><div class="pillbar" aria-label="開封中シートの残り ${inv.cur}錠">${dots}</div></div>
+      <div class="form-grid">
+        <div class="field"><label for="nextVisit">次の受診予約日</label><input type="date" id="nextVisit" data-set="nextVisit" value="${state.nextVisit}"></div>
+        <div class="field"><span class="lab">受診の目安</span><div class="small" style="padding-top:8px">${inv.runOut ? `${fmt(add(inv.runOut, -S.warnDays))}〜${fmt(add(inv.runOut, -1))} の間` : '—'}</div></div>
+      </div>
+    </section>`;
+  }
+
+  function settingsHtml() {
+    const S = state.settings;
+    const mbs = [...state.manualBreaks].sort();
+    return `<details class="panel" id="settings" ${settingsOpen ? 'open' : ''}>
+      <summary><h2>設定と在庫の修正</h2>${ICON.down}</summary>
+      <div class="inner">
+        <div class="sect">
+          <div class="form-grid">
+            <div class="field"><label for="sStart">第1周期の開始日</label><input type="date" id="sStart" data-set="startDate" value="${state.startDate}"></div>
+            <div class="field"><label for="sTime">服用時刻</label><input type="time" id="sTime" data-set="doseTime" value="${esc(S.doseTime)}"></div>
+            <div class="field"><label for="sPer">1シートの錠数</label><input type="number" id="sPer" data-set="perSheet" min="1" max="60" value="${S.perSheet}" inputmode="numeric"></div>
+            <div class="field"><label for="sVisit">1回の受診でもらえる枚数</label><input type="number" id="sVisit" data-set="sheetsPerVisit" min="1" max="12" value="${S.sheetsPerVisit}" inputmode="numeric"></div>
+            <div class="field"><label for="sWarn">何日前から受診を知らせるか</label><input type="number" id="sWarn" data-set="warnDays" min="1" max="60" value="${S.warnDays}" inputmode="numeric"></div>
+          </div>
+          <label class="check"><input type="checkbox" id="sAuto" data-set="autoTake" ${S.autoTake ? 'checked' : ''}><span>服用日は自動で「服用済み」にする（飲まなかった日だけチェックを外す）</span></label>
+          <label class="check"><input type="checkbox" id="sExtra" data-set="showExtra" ${S.showExtra ? 'checked' : ''}><span>今日の画面に「余分に使った錠剤」のお知らせを表示する</span></label>
+          <label class="check"><input type="checkbox" id="sNew" data-set="newSheetAfterBreak" ${S.newSheetAfterBreak ? 'checked' : ''}><span>休薬後は新しいシートから再開する（開封中シートの残りは在庫から外す）</span></label>
+        </div>
+        <div class="sect">
+          <h2>在庫を数え直す</h2>
+          <p class="small muted" style="margin:0">今日の分を飲む前の数を入力します（もう飲んだ場合は1錠足した数）。計算がずれたときに使ってください。現在の基準日: ${fmt(state.inv.date)}</p>
+          <div class="form-grid">
+            <div class="field"><label for="rcU">未開封のシート</label><input type="number" id="rcU" min="0" max="20" value="${state.inv.unopened}" inputmode="numeric"></div>
+            <div class="field"><label for="rcC">開封中シートの残り錠数</label><input type="number" id="rcC" min="0" max="${S.perSheet}" value="${state.inv.current}" inputmode="numeric"></div>
+          </div>
+          <button class="btn outline sm" data-act="recount">今日の在庫として保存</button>
+        </div>
+        <div class="sect">
+          <h2>手動の休薬</h2>
+          <p class="small muted" style="margin:0">医師の指示などでルール外に休薬した日です。周期の丸をタップして追加できます。</p>
+          ${mbs.length ? `<ul class="list">${mbs.map(d => `<li><span>${fmt(d)} から休薬</span><button class="tiny-btn" data-act="unbreak" data-date="${d}">取り消す</button></li>`).join('')}</ul>` : '<span class="small muted">なし</span>'}
+        </div>
+        <div class="sect">
+          <h2>バックアップ</h2>
+          <div class="row"><button class="btn outline sm" data-act="copy">記録をコピー</button></div>
+          <div class="field"><label for="imp">コピーした記録を貼り付けて復元</label><textarea id="imp" placeholder='{"setup":true, ...}'></textarea></div>
+          <div class="row"><button class="btn outline sm" data-act="import">復元する</button></div>
+        </div>
+        <div class="sect">
+          <button class="btn danger sm" data-act="reset">${armed === 'reset' ? 'もう一度押すとすべての記録を削除します' : 'すべての記録を削除'}</button>
+        </div>
+      </div>
+    </details>`;
+  }
+
+  function onboardingHtml() {
+    const T = todayStr();
+    return `<header class="top"><h1>ピル服用ノート</h1><span class="date">${fmt(T)}</span></header>
+    <section class="panel">
+      <div class="ob-hero"><span class="chip take">はじめに</span><div class="num">120日連続服用の周期と、薬の残りを管理します</div></div>
+      <ul class="rules">
+        <li>出血がなければ最長120日まで毎日服用</li>
+        <li>25日目以降に出血が3日続いたら、翌日から4日間休薬</li>
+        <li>休薬4日後、出血の有無にかかわらず5日目に再開</li>
+        <li>1回の受診で3シートまで。なくなる日を先に知らせます</li>
+      </ul>
+    </section>
+    <section class="panel">
+      <h2>今の状況を入力</h2>
+      <div class="field"><label for="obStart">第1周期の開始日（1錠目を飲んだ日）</label><input type="date" id="obStart" value="${T}" max="${add(T, 30)}"></div>
+      <p class="small muted" style="margin:0">その日から毎日、自動で「服用済み」になります。飲まなかった日だけ後からチェックを外してください。</p>
+      <div class="form-grid">
+        <div class="field"><label for="obU">未開封のシート</label><input type="number" id="obU" min="0" max="20" value="2" inputmode="numeric"></div>
+        <div class="field"><label for="obC">開封中シートの残り錠数</label><input type="number" id="obC" min="0" max="28" value="28" inputmode="numeric"></div>
+      </div>
+      <p class="small muted" style="margin:0">錠数は今日の分を飲む前の数です。1シート28錠で計算します（設定で変更できます）。</p>
+      <button class="btn primary" data-act="onboard">はじめる</button>
+    </section>
+    <footer class="foot">${syncHtml()}</footer>`;
+  }
+
+  function renderSheet(d) {
+    openDate = d;
+    const S = state.settings;
+    const T = todayStr();
+    const tl = build(state, add(T, 500));
+    const e = tl.idx[d];
+    const rec = state.days[d] || {};
+    const back = document.getElementById('sheetBack');
+    const sheet = document.getElementById('sheet');
+    const isManual = state.manualBreaks.includes(d);
+    let status = '服用開始前';
+    if (e) status = e.phase === 'take' ? `第${e.cycle}周期 ・ ${e.cday}日目` : `休薬 ${e.bday}日目`;
+    const canBreak = e && e.phase === 'take' && e.cday > 1 && d <= add(T, 1) && !isManual;
+    sheet.innerHTML = `<div class="handle"></div>
+      <div><h3>${fmt(d)}</h3><div class="small muted">${status}${e && e.trig ? ' ・ 翌日から休薬' : ''}</div></div>
+      ${e && e.phase === 'take' && d <= T ? `<div class="toggle-grid">
+        ${takeBtn(d, takenOn(state, d, e, T), takenOn(state, d, e, T) && !rec.t)}
+        ${bleedBtn(d, rec)}</div>` : ''}
+      ${e && e.phase === 'break' && d <= T ? `<div class="toggle-grid"><span class="msg next small">休薬日です</span>${bleedBtn(d, rec)}</div>` : ''}
+      ${d > T ? '<div class="msg small">未来の日です。休薬を前もって登録できます。</div>' : ''}
+      ${e && e.phase === 'take' && e.cday < S.minDay && rec.b ? `<div class="msg small">${S.minDay - 1}日目までの出血は休薬の判定に数えません。</div>` : ''}
+      ${e && d <= T ? `<div class="sect">
+        <h2>余分に使った錠剤</h2>
+        <p class="small muted" style="margin:0">いつもの1錠とは別に使った数です。在庫から差し引き、薬がなくなる日を計算し直します。周期の日数は変わりません。<br>例: 今日の錠剤をなくして次の日の分を飲んだ → 1錠</p>
+        <div class="stepper">
+          <button class="icon-btn" data-act="exdec" data-date="${d}" aria-label="1錠減らす" ${rec.extra ? '' : 'disabled'}>−</button>
+          <span class="num" aria-live="polite">${rec.extra || 0}</span><span class="small muted">錠</span>
+          <button class="icon-btn" data-act="exinc" data-date="${d}" aria-label="1錠増やす">＋</button>
+        </div>
+        ${rec.extra ? `<div class="reasons">${EXTRA_REASONS.map(r => `<button class="reason" data-act="why" data-date="${d}" data-why="${r}" aria-pressed="${rec.why === r}">${r}</button>`).join('')}</div>` : ''}
+        ${rec.why === '飲み忘れ分を追加で飲んだ' ? '<div class="msg small">飲み忘れた日の丸をタップして「飲まなかった」にしておくと、在庫が正しく計算されます。</div>' : ''}
+      </div>` : ''}
+      ${canBreak ? `<button class="btn outline sm" data-act="mbreak" data-date="${d}">この日から${S.breakDays}日間休薬にする（手動）</button>` : ''}
+      ${isManual ? `<button class="btn outline sm" data-act="unbreak" data-date="${d}">この日からの手動休薬を取り消す</button>` : ''}
+      <button class="btn outline sm" data-act="close">閉じる</button>`;
+    back.hidden = false;
+  }
+  function closeSheet() { openDate = null; document.getElementById('sheetBack').hidden = true; }
+
+  // ---------- Events ----------
+  function dayRec(d) { return state.days[d] || (state.days[d] = {}); }
+  function tidy(d) {
+    const r = state.days[d];
+    if (!r) return;
+    if (!r.extra) { delete r.extra; delete r.why; }
+    if (!r.t && !r.b && !r.x && !r.extra) delete state.days[d];
+  }
+  function num(id, lo, hi) { const v = Math.round(+document.getElementById(id).value); return Math.min(hi, Math.max(lo, isFinite(v) ? v : lo)); }
+
+  document.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-act]');
+    if (ev.target.id === 'sheetBack') { closeSheet(); return; }
+    if (!b || b.disabled) return;
+    const act = b.dataset.act, d = b.dataset.date;
+    if (act !== 'delrc' && act !== 'reset') armed = null;
+    switch (act) {
+      case 'take': {
+        const T = todayStr();
+        const e = build(state, d).idx[d];
+        const r = dayRec(d);
+        if (takenOn(state, d, e, T)) { r.t = 0; r.x = 1; } else { r.x = 0; r.t = 1; }
+        tidy(d); commit(); toast(r.x ? '「飲まなかった」にしました' : '服用済みにしました'); break;
+      }
+      case 'exinc': { const r = dayRec(d); r.extra = Math.min(28, (+r.extra || 0) + 1); if (!r.why) r.why = EXTRA_REASONS[0]; commit(); break; }
+      case 'exdec': { const r = dayRec(d); r.extra = Math.max(0, (+r.extra || 0) - 1); tidy(d); commit(); break; }
+      case 'seenmiss': {
+        const cutoff = add(todayStr(), -30);
+        state.seenMiss = [...new Set([...state.seenMiss, ...b.dataset.dates.split(',')])].filter(x => x >= cutoff);
+        commit(); break;
+      }
+      case 'why': { const r = dayRec(d); r.why = b.dataset.why; commit(); break; }
+      case 'bleed': { const r = dayRec(d); r.b = r.b ? 0 : 1; tidy(d); commit(); break; }
+      case 'open': renderSheet(d); break;
+      case 'close': closeSheet(); break;
+      case 'mbreak': if (!state.manualBreaks.includes(d)) state.manualBreaks.push(d); commit(); toast('休薬を登録しました'); break;
+      case 'unbreak': state.manualBreaks = state.manualBreaks.filter(x => x !== d); commit(); break;
+      case 'cyc': viewCycle += +b.dataset.d; render(); break;
+      case 'receive': {
+        const date = document.getElementById('rcDate').value;
+        if (!isDate(date)) { toast('受け取った日を選んでください'); break; }
+        const sheets = num('rcSheets', 1, 12);
+        if (date < state.inv.date) { toast('在庫を数え直した日より前の受け取りは計算に入りません'); break; }
+        state.receipts.push({ date, sheets, after: date === state.inv.date ? 1 : 0 });
+        commit(); toast(`${sheets}シートを追加しました`); break;
+      }
+      case 'delrc': {
+        const key = 'rc' + b.dataset.i;
+        if (armed === key) { state.receipts.splice(+b.dataset.i, 1); armed = null; commit(); }
+        else { armed = key; render(); }
+        break;
+      }
+      case 'recount': {
+        state.inv = { date: todayStr(), unopened: num('rcU', 0, 20), current: num('rcC', 0, state.settings.perSheet) };
+        state.receipts = state.receipts.filter(r => r.date > state.inv.date);
+        commit(); toast('在庫を保存しました'); break;
+      }
+      case 'copy': {
+        const text = JSON.stringify(state);
+        const ta = document.getElementById('imp');
+        navigator.clipboard && navigator.clipboard.writeText(text).then(() => toast('コピーしました'), () => { ta.value = text; ta.select(); toast('選択した文字をコピーしてください'); });
+        if (!navigator.clipboard) { ta.value = text; ta.select(); }
+        break;
+      }
+      case 'import': {
+        try {
+          const n = normalize(JSON.parse(document.getElementById('imp').value));
+          if (!n || !n.setup) throw 0;
+          state = n; viewCycle = null; commit(); toast('復元しました');
+        } catch { toast('記録の形式が正しくありません'); }
+        break;
+      }
+      case 'reset': {
+        if (armed === 'reset') {
+          armed = null; state = null; viewCycle = null;
+          try { localStorage.removeItem(LS); } catch {}
+          if (docRef) { writeChain = writeChain.then(() => docRef.delete()).catch(() => {}); }
+          render(); toast('削除しました');
+        } else { armed = 'reset'; render(); }
+        break;
+      }
+      case 'onboard': {
+        const start = document.getElementById('obStart').value;
+        const T = todayStr();
+        if (!isDate(start)) { toast('1錠目の日を選んでください'); break; }
+        state = normalize({
+          setup: true, startDate: start, days: {},
+          inv: { date: T, unopened: num('obU', 0, 20), current: num('obC', 0, 28) }
+        });
+        viewCycle = null; commit(); break;
+      }
+    }
+    if (openDate && ['take', 'bleed', 'mbreak', 'unbreak', 'exinc', 'exdec', 'why'].includes(act)) {
+      if (act === 'mbreak' || act === 'unbreak') closeSheet(); else renderSheet(openDate);
+    }
+  });
+
+  document.addEventListener('change', ev => {
+    const el = ev.target, key = el.dataset && el.dataset.set;
+    if (!key || !state) return;
+    const S = state.settings;
+    if (key === 'startDate') { if (isDate(el.value)) { state.startDate = el.value; viewCycle = null; } }
+    else if (key === 'nextVisit') state.nextVisit = isDate(el.value) ? el.value : '';
+    else if (key === 'doseTime') S.doseTime = el.value || DEF.doseTime;
+    else if (key === 'newSheetAfterBreak' || key === 'autoTake' || key === 'showExtra') S[key] = el.checked;
+    else { const v = Math.round(+el.value); if (isFinite(v) && v > 0) S[key] = v; }
+    commit();
+  });
+  document.addEventListener('toggle', ev => { if (ev.target.id === 'settings') settingsOpen = ev.target.open; }, true);
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && openDate) closeSheet(); });
+
+  let lastDay = todayStr();
+  const tick = () => { if (todayStr() !== lastDay) { lastDay = todayStr(); render(); } };
+  document.addEventListener('visibilitychange', tick);
+  setInterval(tick, 60000);
+
+  render();
+  initDb();
+  if (!window.claude) setTimeout(() => { if (!docRef) initDb(); }, 1500);
+
+  window.__pill = { build, inventory, normalize, add };
+})();
+</script>
