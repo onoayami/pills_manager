@@ -113,8 +113,11 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .check-btn .box.x { border: 0; color: var(--warn); }
 .check-btn .box.x svg { width: 20px; height: 20px; }
 .stepper { display: flex; align-items: center; gap: 12px; }
-.stepper .icon-btn { width: 44px; height: 44px; font-size: 22px; font-weight: 700; }
-.stepper .num { font-size: 26px; font-weight: 700; min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; }
+.stepper .icon-btn { width: 44px; height: 44px; padding: 0; }
+.stepper .icon-btn svg { width: 18px; height: 18px; }
+.stepper .val { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 44px; min-width: 4.5em; }
+.stepper .num { font-size: 26px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.stepper .unit { font-size: 14px; line-height: 1; color: var(--muted); }
 .reasons { display: flex; flex-wrap: wrap; gap: 6px; }
 .reason { border: 1px solid var(--line); background: transparent; border-radius: 99px; padding: 6px 12px; font-size: 13px; }
 .reason[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 700; }
@@ -166,16 +169,27 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .stat .s { font-size: 12px; color: var(--muted); }
 .start-field { max-width: 240px; }
 .start-field input[type="date"] { height: 40px; min-height: 40px; padding-block: 0; border-radius: 12px; line-height: 40px; }
-.wd { font-size: .72em; font-weight: 500; margin-left: 1px; }
+.wd { font-size: .72em; font-weight: 500; margin-left: 1px; display: inline-block; transform: translateY(-.1em); }
 .today-date { font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
 .today-status { font-size: 13px; font-weight: 600; color: var(--ink); }
+.history > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; padding: 4px 0; }
+.history > summary::-webkit-details-marker { display: none; }
+.history > summary svg { width: 16px; height: 16px; transition: transform .2s; }
+.history[open] > summary svg { transform: rotate(180deg); }
+.history-in { display: flex; flex-direction: column; gap: 12px; padding-top: 10px; }
+.year-g { display: flex; flex-direction: column; gap: 6px; }
+.year-h { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+.year-h .muted { font-weight: 500; }
 .sum-l { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .receive { display: flex; flex-direction: column; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
 .stat.warn { background: var(--warn-soft); }
 .stat.warn .v { color: var(--warn); }
 .pillbar { display: flex; gap: 3px; flex-wrap: wrap; }
 .pillbar i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
-.pillbar i.off { background: var(--line); }
+.pillbar i.off { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.pill-legend { display: flex; gap: 12px; font-size: 12px; color: var(--muted); }
+.pill-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; background: var(--accent); }
+.pill-legend i.off { background: transparent; box-shadow: inset 0 0 0 1px var(--muted); }
 
 /* Forms */
 .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
@@ -256,6 +270,8 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
   const ICON = {
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
     drop: '<svg class="drop" viewBox="0 0 10 13"><path d="M5 0C5 0 0 6 0 8.5A5 4.5 0 0 0 10 8.5C10 6 5 0 5 0Z" fill="currentColor"/></svg>',
+    minus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>',
     cross: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
     left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg>',
     right: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg>',
@@ -285,6 +301,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
   let openDate = null;
   let settingsOpen = false;
   let stockOpen = true;
+  let historyOpen = false, rcYear = 'all', rcOrder = 'desc';
   try { stockOpen = localStorage.getItem(LS + ':stockOpen') !== '0'; } catch {}
   let armed = null;
   let syncMode = 'local';
@@ -626,7 +643,6 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
     const left = inv.runOut ? diff(T, inv.runOut) : null;
     const warn = left != null && left <= S.warnDays;
     const dots = Array.from({ length: S.perSheet }, (_, i) => `<i class="${i < inv.cur ? '' : 'off'}"></i>`).join('');
-    const recent = state.receipts.map((r, i) => ({ ...r, i })).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
     return `<details class="panel" id="stock" ${stockOpen ? 'open' : ''}>
       <summary><span class="sum-l"><h2>薬の残りと受診</h2><span class="small muted">残り${inv.total}錠${inv.runOut ? ` ・ ${fmt(inv.runOut)}から不足` : ''}</span></span>${ICON.down}</summary>
       <div class="inner">
@@ -636,17 +652,43 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
           <div class="field"><label for="rcSheets">シート数</label><input type="number" id="rcSheets" min="1" max="12" value="${S.sheetsPerVisit}" inputmode="numeric"></div>
         </div>
         <button class="btn primary sm" data-act="receive">受け取りを記録</button>
-        ${recent.length ? `<ul class="list">${recent.map(r => `<li><span>${fmt(r.date)} ・ ${r.sheets}シート受け取り</span><button class="tiny-btn ${armed === 'rc' + r.i ? 'armed' : ''}" data-act="delrc" data-i="${r.i}">${armed === 'rc' + r.i ? 'もう一度押すと削除' : '削除'}</button></li>`).join('')}</ul>` : ''}
+        ${historyHtml()}
       </div>
       <div class="stock-grid">
-        <div class="stat"><span class="k">手元の錠数</span><span class="v">${inv.total}<small>錠</small></span><span class="s">未開封 ${inv.unopened}シート + 開封中 ${inv.cur}錠</span></div>
+        <div class="stat"><span class="k">手元の錠数</span><span class="v">${inv.total}<small>錠</small></span><span class="s">未開封 ${inv.unopened}シート + 使用中シートの残り ${inv.cur}錠</span></div>
         <div class="stat ${warn ? 'warn' : ''}"><span class="k">薬が足りなくなる日</span><span class="v">${inv.runOut ? fmt(inv.runOut) : '—'}</span><span class="s">${inv.runOut ? `あと${Math.max(0, left)}日 ・ 休薬日も計算済み` : '500日以上先'}</span></div>
       </div>
-      <div class="field"><span class="lab">開封中のシート</span><div class="pillbar" aria-label="開封中シートの残り ${inv.cur}錠">${dots}</div></div>
+      <div class="field"><span class="lab">今使っているシートの残り <b class="num" style="color:var(--accent);font-size:15px">${inv.cur}錠</b>（${S.perSheet}錠中）</span><div class="pillbar" aria-label="今使っているシートの残り ${inv.cur}錠">${dots}</div><div class="pill-legend"><span><i></i>残り</span><span><i class="off"></i>飲んだ・使った</span></div></div>
       <div class="form-grid">
         <div class="field"><label for="nextVisit">次の受診予約日</label><input type="date" id="nextVisit" data-set="nextVisit" value="${state.nextVisit}"></div>
         <div class="field"><span class="lab">受診の目安</span><div class="small" style="padding-top:8px">${inv.runOut ? `${fmt(add(inv.runOut, -S.warnDays))}〜${fmt(add(inv.runOut, -1))} の間` : '—'}</div></div>
       </div>
+      </div>
+    </details>`;
+  }
+
+  // Pickup history: collapsible, filter by year, newest/oldest first
+  function historyHtml() {
+    const all = state.receipts.map((r, i) => ({ ...r, i }));
+    if (!all.length) return '';
+    const years = [...new Set(all.map(r => r.date.slice(0, 4)))].sort().reverse();
+    if (rcYear !== 'all' && !years.includes(rcYear)) rcYear = 'all';
+    const list = all.filter(r => rcYear === 'all' || r.date.startsWith(rcYear))
+      .sort((a, b) => rcOrder === 'desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
+    const groups = [];
+    list.forEach(r => { const y = r.date.slice(0, 4); let g = groups[groups.length - 1]; if (!g || g.y !== y) groups.push(g = { y, items: [] }); g.items.push(r); });
+    const chip = (val, text) => `<button class="reason" data-act="rcyear" data-y="${val}" aria-pressed="${rcYear === val}">${text}</button>`;
+    return `<details class="history" id="history" ${historyOpen ? 'open' : ''}>
+      <summary><span>受け取りの履歴（${all.length}件）</span>${ICON.down}</summary>
+      <div class="history-in">
+        <div class="row between">
+          <div class="reasons">${chip('all', 'すべて')}${years.map(y => chip(y, y + '年')).join('')}</div>
+          <button class="tiny-btn" data-act="rcorder">${rcOrder === 'desc' ? '新しい順' : '古い順'} ⇅</button>
+        </div>
+        ${groups.map(g => `<div class="year-g">
+          <div class="year-h"><span>${g.y}年</span><span class="muted">${g.items.length}回 ・ 計${g.items.reduce((n, r) => n + (+r.sheets || 0), 0)}シート</span></div>
+          <ul class="list">${g.items.map(r => `<li><span>${fmt(r.date).replace(/^\d{4}\//, '')} ・ ${r.sheets}シート</span><button class="tiny-btn ${armed === 'rc' + r.i ? 'armed' : ''}" data-act="delrc" data-i="${r.i}">${armed === 'rc' + r.i ? 'もう一度押すと削除' : '削除'}</button></li>`).join('')}</ul>
+        </div>`).join('')}
       </div>
     </details>`;
   }
@@ -747,9 +789,9 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         <h2>余分に使った錠剤</h2>
         <p class="small muted" style="margin:0">いつもの1錠とは別に使った数です。在庫から差し引き、薬がなくなる日を計算し直します。周期の日数は変わりません。<br>例: 今日の錠剤をなくして次の日の分を飲んだ → 1錠</p>
         <div class="stepper">
-          <button class="icon-btn" data-act="exdec" data-date="${d}" aria-label="1錠減らす" ${rec.extra ? '' : 'disabled'}>−</button>
-          <span class="num" aria-live="polite">${rec.extra || 0}</span><span class="small muted">錠</span>
-          <button class="icon-btn" data-act="exinc" data-date="${d}" aria-label="1錠増やす">＋</button>
+          <button class="icon-btn" data-act="exdec" data-date="${d}" aria-label="1錠減らす" ${rec.extra ? '' : 'disabled'}>${ICON.minus}</button>
+          <span class="val" aria-live="polite"><span class="num">${rec.extra || 0}</span><span class="unit">錠</span></span>
+          <button class="icon-btn" data-act="exinc" data-date="${d}" aria-label="1錠増やす">${ICON.plus}</button>
         </div>
         ${rec.extra ? `<div class="reasons">${EXTRA_REASONS.map(r => `<button class="reason" data-act="why" data-date="${d}" data-why="${r}" aria-pressed="${rec.why === r}">${r}</button>`).join('')}</div>` : ''}
         ${rec.why === '飲み忘れ分を追加で飲んだ' ? '<div class="msg small">飲み忘れた日の丸をタップして「飲まなかった」にしておくと、在庫が正しく計算されます。</div>' : ''}
@@ -792,6 +834,8 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         state.seenMiss = [...new Set([...state.seenMiss, ...b.dataset.dates.split(',')])].filter(x => x >= cutoff);
         commit(); break;
       }
+      case 'rcyear': rcYear = b.dataset.y; render(); break;
+      case 'rcorder': rcOrder = rcOrder === 'desc' ? 'asc' : 'desc'; render(); break;
       case 'why': { const r = dayRec(d); r.why = b.dataset.why; commit(); break; }
       case 'bleed': { const r = dayRec(d); r.b = r.b ? 0 : 1; tidy(d); commit(); break; }
       case 'open': renderSheet(d); break;
@@ -879,6 +923,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
   });
   document.addEventListener('toggle', ev => {
     if (ev.target.id === 'settings') settingsOpen = ev.target.open;
+    if (ev.target.id === 'history') historyOpen = ev.target.open;
     if (ev.target.id === 'stock') { stockOpen = ev.target.open; try { localStorage.setItem(LS + ':stockOpen', stockOpen ? '1' : '0'); } catch {} }
   }, true);
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && openDate) closeSheet(); });
