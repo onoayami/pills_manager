@@ -166,6 +166,10 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .stat .s { font-size: 12px; color: var(--muted); }
 .start-field { max-width: 240px; }
 .start-field input[type="date"] { height: 40px; min-height: 40px; padding-block: 0; border-radius: 12px; line-height: 40px; }
+.wd { font-size: .72em; font-weight: 500; margin-left: 1px; }
+.today-date { font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.today-status { font-size: 13px; font-weight: 600; color: var(--ink); }
+.sum-l { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .receive { display: flex; flex-direction: column; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
 .stat.warn { background: var(--warn-soft); }
 .stat.warn .v { color: var(--warn); }
@@ -243,7 +247,9 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
   const add = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return ds(d); };
   const diff = (a, b) => Math.round((parse(b) - parse(a)) / 864e5);
   const todayStr = () => ds(new Date());
-  const fmt = s => { const d = parse(s); const y = d.getFullYear() !== new Date().getFullYear() ? d.getFullYear() + '/' : ''; return `${y}${d.getMonth() + 1}/${d.getDate()}(${WD[d.getDay()]})`; };
+  const fmtP = s => { const d = parse(s); const y = d.getFullYear() !== new Date().getFullYear() ? d.getFullYear() + '/' : ''; return `${y}${d.getMonth() + 1}/${d.getDate()}(${WD[d.getDay()]})`; };
+  // Display version: weekday set smaller than the month/day
+  const fmt = s => fmtP(s).replace(/\((.)\)$/, '<span class="wd">($1)</span>');
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const isDate = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
 
@@ -278,6 +284,8 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
   let viewCycle = null;
   let openDate = null;
   let settingsOpen = false;
+  let stockOpen = true;
+  try { stockOpen = localStorage.getItem(LS + ':stockOpen') !== '0'; } catch {}
   let armed = null;
   let syncMode = 'local';
 
@@ -323,7 +331,16 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
     if (!e || e.phase !== 'take' || d > T) return false;
     const r = st.days[d] || {};
     if (r.x) return false;
-    return !!r.t || !!st.settings.autoTake;
+    if (r.t) return true;
+    if (!st.settings.autoTake) return false;
+    return d < todayStr() || doseTimePassed(st);
+  }
+  // Today is auto-checked once the dose time has passed (or right away when no time is set).
+  function doseTimePassed(st) {
+    const t = st.settings.doseTime;
+    if (!t || !/^\d{1,2}:\d{2}$/.test(t)) return true;
+    const now = new Date();
+    return `${pad(now.getHours())}:${pad(now.getMinutes())}` >= t.padStart(5, '0');
   }
   const EXTRA_REASONS = ['なくした・落とした', '吐いたので追加で飲んだ', '飲み忘れ分を追加で飲んだ', 'その他'];
 
@@ -456,7 +473,8 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
           <div class="ring">${ring(e.bday / S.breakDays, 'var(--rest)')}<div class="lbl"><span class="big num">${e.bday}</span><span class="of">休薬 / ${S.breakDays}日</span></div></div>
           <div class="today-info">
             <span class="chip rest">休薬期間</span>
-            <div class="head">今日は飲みません</div>
+            <div class="today-date">${fmt(T)}</div>
+            <div class="today-status">今日は飲みません</div>
             <div class="small muted">${fmt(bStart)}〜${fmt(add(resume, -1))}</div>
           </div>
         </div>
@@ -480,28 +498,33 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
     }
     const taken = takenOn(state, T, e, T);
     const auto = taken && !rec.t;
+    const pending = !taken && !rec.x;
     const chip = e.trig ? '<span class="chip warn">明日から休薬</span>' : (e.cday >= S.minDay ? '<span class="chip take">休薬判定の期間</span>' : '<span class="chip take">連続服用</span>');
     return `<section class="panel" aria-label="今日">
       <div class="today">
         <div class="ring">${ring(e.cday / S.maxDays, 'var(--accent)')}<div class="lbl"><span class="big num">${e.cday}</span><span class="of">日目 / ${S.maxDays}</span></div></div>
         <div class="today-info">
           ${chip}
-          <div class="head">${taken ? (auto ? '今日の分は自動で服用済み' : '今日の分は飲みました') : rec.x ? '今日は飲まなかった' : '今日の1錠はまだです'}</div>
-          <div class="small muted">服用時刻 ${esc(S.doseTime)} ・ 第${e.cycle}周期</div>
+          <div class="today-date">${fmt(T)}</div>
+          <div class="today-status">${taken ? (auto ? '今日の分は自動で服用済み' : '今日の分は飲みました') : rec.x ? '今日は飲まなかった' : S.autoTake && S.doseTime ? `${esc(S.doseTime)}に自動で服用済みになります` : '今日の1錠はまだです'}</div>
+          <div class="small muted">服用時刻 ${S.doseTime ? esc(S.doseTime) : '未設定'} ・ 第${e.cycle}周期</div>
         </div>
       </div>
       <div class="msg">${msg}</div>
       <div class="actions">
-        ${takeBtn(T, taken, auto)}
+        ${takeBtn(T, taken, auto, pending)}
         ${bleedBtn(T, rec)}
       </div>
       ${extraSummary(rec)}
       <button class="btn outline sm" data-act="open" data-date="${T}">錠剤をなくした・余分に飲んだときの記録</button>
     </section>`;
   }
-  function takeBtn(d, taken, auto) {
-    return `<button class="btn check-btn ${taken ? 'done' : 'outline'}" data-act="take" data-date="${d}" role="checkbox" aria-checked="${taken}">
-      <span class="box${taken ? '' : ' x'}">${taken ? ICON.check : ICON.cross}</span>${taken ? (auto ? '服用済み（自動）' : '服用済み') : '飲まなかった'}</button>`;
+  // pending: today before the dose time, not decided yet. Past days never show "(自動)".
+  function takeBtn(d, taken, auto, pending) {
+    const showAuto = auto && d === todayStr();
+    const box = taken ? `<span class="box">${ICON.check}</span>` : pending ? '<span class="box"></span>' : `<span class="box x">${ICON.cross}</span>`;
+    const label = taken ? (showAuto ? '服用済み（自動）' : '服用済み') : pending ? '飲んだ' : '飲まなかった';
+    return `<button class="btn check-btn ${taken ? 'done' : 'outline'}" data-act="take" data-date="${d}" role="checkbox" aria-checked="${taken}">${box}${label}</button>`;
   }
   function extraSummary(rec) {
     if (!rec.extra || !state.settings.showExtra) return '';
@@ -558,7 +581,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         if (rec.extra && d <= T) cls.push('ex');
         const status = d > T ? '予定' : tk ? '服用済み' : (d < T || rec.x) ? '飲まなかった' : '未記録';
         const label = cd === 1 || cd === S.minDay || (e && e.trig) ? cd : '';
-        cells += `<button class="${cls.join(' ')}" data-act="open" data-date="${d}" ${d > add(T, 1) ? 'disabled' : ''} aria-label="${fmt(d)} ${cd}日目 ${status}${rec.b ? ' 出血あり' : ''}">${label}</button>`;
+        cells += `<button class="${cls.join(' ')}" data-act="open" data-date="${d}" ${d > add(T, 1) ? 'disabled' : ''} aria-label="${fmtP(d)} ${cd}日目 ${status}${rec.b ? ' 出血あり' : ''}">${label}</button>`;
       }
       blocks += `<div class="blk"><div class="blk-l">${s + 1}–${s + m}日目${S.newSheetAfterBreak && S.perSheet === 28 ? `・${s / S.perSheet + 1}シート目` : ''}</div><div class="cells">${cells}</div></div>`;
     }
@@ -567,7 +590,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
       for (let i = 0; i < S.breakDays; i++) {
         const d = add(c.breakStart, i), rec = state.days[d] || {};
         if (d <= T) extra += +rec.extra || 0;
-        cells += `<button class="cell brk${rec.b ? ' bl' : ''}${rec.extra && d <= T ? ' ex' : ''}${d === T ? ' now' : ''}" data-act="open" data-date="${d}" ${d > add(T, 1) ? 'disabled' : ''} aria-label="${fmt(d)} 休薬${i + 1}日目">休</button>`;
+        cells += `<button class="cell brk${rec.b ? ' bl' : ''}${rec.extra && d <= T ? ' ex' : ''}${d === T ? ' now' : ''}" data-act="open" data-date="${d}" ${d > add(T, 1) ? 'disabled' : ''} aria-label="${fmtP(d)} 休薬${i + 1}日目">休</button>`;
       }
       blocks += `<div class="blk"><div class="blk-l">休薬 ${fmt(c.breakStart)}〜${fmt(add(c.breakStart, S.breakDays - 1))}</div><div class="cells">${cells}</div></div>`;
     }
@@ -604,8 +627,9 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
     const warn = left != null && left <= S.warnDays;
     const dots = Array.from({ length: S.perSheet }, (_, i) => `<i class="${i < inv.cur ? '' : 'off'}"></i>`).join('');
     const recent = state.receipts.map((r, i) => ({ ...r, i })).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
-    return `<section class="panel" aria-label="薬の残り">
-      <h2>薬の残りと受診</h2>
+    return `<details class="panel" id="stock" ${stockOpen ? 'open' : ''}>
+      <summary><span class="sum-l"><h2>薬の残りと受診</h2><span class="small muted">残り${inv.total}錠${inv.runOut ? ` ・ ${fmt(inv.runOut)}から不足` : ''}</span></span>${ICON.down}</summary>
+      <div class="inner">
       <div class="receive">
         <div class="form-grid">
           <div class="field"><label for="rcDate">受け取った日</label><input type="date" id="rcDate" value="${T}"></div>
@@ -616,14 +640,15 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
       </div>
       <div class="stock-grid">
         <div class="stat"><span class="k">手元の錠数</span><span class="v">${inv.total}<small>錠</small></span><span class="s">未開封 ${inv.unopened}シート + 開封中 ${inv.cur}錠</span></div>
-        <div class="stat ${warn ? 'warn' : ''}"><span class="k">薬が足りなくなる日</span><span class="v">${inv.runOut ? fmt(inv.runOut).replace(/\((.)\)$/, '<small>($1)</small>') : '—'}</span><span class="s">${inv.runOut ? `あと${Math.max(0, left)}日 ・ 休薬日も計算済み` : '500日以上先'}</span></div>
+        <div class="stat ${warn ? 'warn' : ''}"><span class="k">薬が足りなくなる日</span><span class="v">${inv.runOut ? fmt(inv.runOut) : '—'}</span><span class="s">${inv.runOut ? `あと${Math.max(0, left)}日 ・ 休薬日も計算済み` : '500日以上先'}</span></div>
       </div>
       <div class="field"><span class="lab">開封中のシート</span><div class="pillbar" aria-label="開封中シートの残り ${inv.cur}錠">${dots}</div></div>
       <div class="form-grid">
         <div class="field"><label for="nextVisit">次の受診予約日</label><input type="date" id="nextVisit" data-set="nextVisit" value="${state.nextVisit}"></div>
         <div class="field"><span class="lab">受診の目安</span><div class="small" style="padding-top:8px">${inv.runOut ? `${fmt(add(inv.runOut, -S.warnDays))}〜${fmt(add(inv.runOut, -1))} の間` : '—'}</div></div>
       </div>
-    </section>`;
+      </div>
+    </details>`;
   }
 
   function settingsHtml() {
@@ -635,7 +660,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         <div class="sect">
           <div class="form-grid">
             <div class="field"><label for="sStart">第1周期の開始日</label><input type="date" id="sStart" data-set="startDate" value="${state.startDate}"></div>
-            <div class="field"><label for="sTime">服用時刻</label><input type="time" id="sTime" data-set="doseTime" value="${esc(S.doseTime)}"></div>
+            <div class="field"><label for="sTime">服用時刻（この時刻に自動チェック）</label><input type="time" id="sTime" data-set="doseTime" value="${esc(S.doseTime)}"></div>
             <div class="field"><label for="sPer">1シートの錠数</label><input type="number" id="sPer" data-set="perSheet" min="1" max="60" value="${S.perSheet}" inputmode="numeric"></div>
             <div class="field"><label for="sVisit">1回の受診でもらえる枚数</label><input type="number" id="sVisit" data-set="sheetsPerVisit" min="1" max="12" value="${S.sheetsPerVisit}" inputmode="numeric"></div>
             <div class="field"><label for="sWarn">何日前から受診を知らせるか</label><input type="number" id="sWarn" data-set="warnDays" min="1" max="60" value="${S.warnDays}" inputmode="numeric"></div>
@@ -713,7 +738,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
     sheet.innerHTML = `<div class="handle"></div>
       <div><h3>${fmt(d)}</h3><div class="small muted">${status}${e && e.trig ? ' ・ 翌日から休薬' : ''}</div></div>
       ${e && e.phase === 'take' && d <= T ? `<div class="toggle-grid">
-        ${takeBtn(d, takenOn(state, d, e, T), takenOn(state, d, e, T) && !rec.t)}
+        ${takeBtn(d, takenOn(state, d, e, T), takenOn(state, d, e, T) && !rec.t, d === T && !takenOn(state, d, e, T) && !rec.x)}
         ${bleedBtn(d, rec)}</div>` : ''}
       ${e && e.phase === 'break' && d <= T ? `<div class="toggle-grid"><span class="msg next small">休薬日です</span>${bleedBtn(d, rec)}</div>` : ''}
       ${d > T ? '<div class="msg small">未来の日です。休薬を前もって登録できます。</div>' : ''}
@@ -839,16 +864,29 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
     const S = state.settings;
     if (key === 'startDate') { if (isDate(el.value)) { state.startDate = el.value; viewCycle = null; } }
     else if (key === 'nextVisit') state.nextVisit = isDate(el.value) ? el.value : '';
-    else if (key === 'doseTime') S.doseTime = el.value || DEF.doseTime;
+    else if (key === 'doseTime') S.doseTime = el.value || '';
+    else if (key === 'autoTake' && !el.checked && S.autoTake) {
+      // Switching to manual: keep every day that is currently shown as taken
+      const T = todayStr();
+      for (const e of build(state, T).list) {
+        if (e.phase === 'take' && takenOn(state, e.date, e, T)) { const r = dayRec(e.date); r.t = 1; r.x = 0; }
+      }
+      S.autoTake = false;
+    }
     else if (key === 'newSheetAfterBreak' || key === 'autoTake' || key === 'showExtra') S[key] = el.checked;
     else { const v = Math.round(+el.value); if (isFinite(v) && v > 0) S[key] = v; }
     commit();
   });
-  document.addEventListener('toggle', ev => { if (ev.target.id === 'settings') settingsOpen = ev.target.open; }, true);
+  document.addEventListener('toggle', ev => {
+    if (ev.target.id === 'settings') settingsOpen = ev.target.open;
+    if (ev.target.id === 'stock') { stockOpen = ev.target.open; try { localStorage.setItem(LS + ':stockOpen', stockOpen ? '1' : '0'); } catch {} }
+  }, true);
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && openDate) closeSheet(); });
 
-  let lastDay = todayStr();
-  const tick = () => { if (todayStr() !== lastDay) { lastDay = todayStr(); render(); } };
+  // Re-render when the date changes or the dose time passes
+  const clockKey = () => todayStr() + (state && doseTimePassed(state) ? '+' : '-');
+  let lastKey = clockKey();
+  const tick = () => { const k = clockKey(); if (k !== lastKey) { lastKey = k; render(); } };
   document.addEventListener('visibilitychange', tick);
   setInterval(tick, 60000);
 
