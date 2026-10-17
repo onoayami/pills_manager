@@ -137,7 +137,9 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .linkchip { border: 1px solid var(--warn); background: transparent; border-radius: 99px; padding: 2px 10px; font-size: 13px; color: var(--warn); font-variant-numeric: tabular-nums; }
 
 /* Cycle sheet */
-.cyc-nav { display: flex; align-items: center; gap: 6px; }
+.cyc-head { display: flex; flex-direction: column; gap: 4px; }
+.cyc-nav { display: flex; align-items: center; gap: 10px; }
+.cyc-title { font-size: 22px; line-height: 1.2; margin: 0; }
 .icon-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: transparent; display: inline-flex; align-items: center; justify-content: center; }
 .icon-btn:disabled { opacity: .3; cursor: default; }
 .icon-btn svg { width: 18px; height: 18px; }
@@ -617,12 +619,13 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
       ? (c.reason === 'bleed' || c.reason === 'manual' ? `${fmt(c.start)}〜 ・ ${reason}予定` : `${fmt(c.start)}〜 ・ 最長 ${fmt(end)} まで`)
       : `${fmt(c.start)}〜${fmt(end)} ・ ${reason || ''}`;
     return `<section class="panel" aria-label="周期">
-      <div class="row between">
-        <div><h2>第${c.no}周期</h2><div class="small muted">${sub}</div></div>
+      <div class="cyc-head">
         <div class="cyc-nav">
           <button class="icon-btn" data-act="cyc" data-d="-1" ${viewCycle <= 1 ? 'disabled' : ''} aria-label="前の周期">${ICON.left}</button>
+          <h2 class="cyc-title">第${c.no}周期</h2>
           <button class="icon-btn" data-act="cyc" data-d="1" ${viewCycle >= maxNo ? 'disabled' : ''} aria-label="次の周期">${ICON.right}</button>
         </div>
+        <div class="small muted">${sub}</div>
       </div>
       ${c.no === 1 ? `<div class="field start-field"><label for="cStart">第1周期の開始日（1錠目を飲んだ日）</label><input type="date" id="cStart" data-set="startDate" value="${state.startDate}" max="${add(T, 60)}"></div>` : ''}
       <div class="stats"><span><b>${taken}</b>日 服用</span><span><b>${bleed}</b>日 出血</span>${missed ? `<span><b>${missed}</b>日 飲まなかった</span>` : ''}${extra ? `<span><b>${extra}</b>錠 余分に使用</span>` : ''}</div>
