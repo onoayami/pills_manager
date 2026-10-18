@@ -115,7 +115,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .stepper { display: flex; align-items: center; gap: 12px; }
 .stepper .icon-btn { width: 44px; height: 44px; padding: 0; }
 .stepper .icon-btn svg { width: 18px; height: 18px; }
-.stepper .val { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 44px; min-width: 4.5em; }
+.stepper .val { display: inline-flex; align-items: baseline; justify-content: center; gap: 4px; min-width: 4.5em; }
 .stepper .num { font-size: 26px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
 .stepper .unit { font-size: 14px; line-height: 1; color: var(--muted); }
 .reasons { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -520,7 +520,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         <div class="today-info">
           ${chip}
           <div class="today-date">${fmt(T)}</div>
-          <div class="today-status">${taken ? (auto ? '今日の分は自動で服用済み' : '今日の分は飲みました') : rec.x ? '今日は飲まなかった' : S.autoTake && S.doseTime ? `${esc(S.doseTime)}に自動で服用済みになります` : '今日の1錠はまだです'}</div>
+          <div class="today-status">${taken ? (auto ? '今日の分は自動で服用済み' : '今日の分は飲みました') : rec.x ? '今日は飲まなかった' : S.autoTake && S.doseTime ? `服用予定（${esc(S.doseTime)}に服用済みになります）` : '今日の1錠は服用予定です'}</div>
           <div class="small muted">服用時刻 ${S.doseTime ? esc(S.doseTime) : '未設定'} ・ 第${e.cycle}周期</div>
         </div>
       </div>
@@ -537,7 +537,8 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
   function takeBtn(d, taken, auto, pending) {
     const showAuto = auto && d === todayStr();
     const box = taken ? `<span class="box">${ICON.check}</span>` : pending ? '<span class="box"></span>' : `<span class="box x">${ICON.cross}</span>`;
-    const label = taken ? (showAuto ? '服用済み（自動）' : '服用済み') : pending ? '飲んだ' : '飲まなかった';
+    const S = state.settings;
+    const label = taken ? (showAuto ? '服用済み（自動）' : '服用済み') : pending ? (S.autoTake && S.doseTime ? `服用予定 ${esc(S.doseTime)}` : '服用予定') : '飲まなかった';
     return `<button class="btn check-btn ${taken ? 'done' : 'outline'}" data-act="take" data-date="${d}" role="checkbox" aria-checked="${taken}">${box}${label}</button>`;
   }
   function extraSummary(rec) {
