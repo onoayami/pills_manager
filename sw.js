@@ -1,5 +1,5 @@
 // Network-first for the app files so updates arrive right away; cached copy is used offline.
-const CACHE = 'pill-note-v7';
+const CACHE = 'pill-note-v8';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
