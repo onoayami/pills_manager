@@ -186,12 +186,6 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .receive { display: flex; flex-direction: column; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
 .stat.warn { background: var(--warn-soft); }
 .stat.warn .v { color: var(--warn); }
-.pillbar { display: flex; gap: 3px; flex-wrap: wrap; }
-.pillbar i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
-.pillbar i.off { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
-.pill-legend { display: flex; gap: 12px; font-size: 12px; color: var(--muted); }
-.pill-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; background: var(--accent); }
-.pill-legend i.off { background: transparent; box-shadow: inset 0 0 0 1px var(--muted); }
 
 /* Forms */
 .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
@@ -645,7 +639,6 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
     const S = state.settings;
     const left = inv.runOut ? diff(T, inv.runOut) : null;
     const warn = left != null && left <= S.warnDays;
-    const dots = Array.from({ length: S.perSheet }, (_, i) => `<i class="${i < inv.cur ? '' : 'off'}"></i>`).join('');
     return `<details class="panel" id="stock" ${stockOpen ? 'open' : ''}>
       <summary><span class="sum-l"><h2>薬の残りと受診</h2><span class="small muted">残り${inv.total}錠${inv.runOut ? ` ・ ${fmt(inv.runOut)}から不足` : ''}</span></span>${ICON.down}</summary>
       <div class="inner">
@@ -661,7 +654,6 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         <div class="stat"><span class="k">手元の錠数</span><span class="v">${inv.total}<small>錠</small></span><span class="s">未開封 ${inv.unopened}シート + 使用中シートの残り ${inv.cur}錠</span></div>
         <div class="stat ${warn ? 'warn' : ''}"><span class="k">薬が足りなくなる日</span><span class="v">${inv.runOut ? fmt(inv.runOut) : '—'}</span><span class="s">${inv.runOut ? `あと${Math.max(0, left)}日 ・ 休薬日も計算済み` : '500日以上先'}</span></div>
       </div>
-      <div class="field"><span class="lab">今使っているシートの残り <b class="num" style="color:var(--accent);font-size:15px">${inv.cur}錠</b>（${S.perSheet}錠中）</span><div class="pillbar" aria-label="今使っているシートの残り ${inv.cur}錠">${dots}</div><div class="pill-legend"><span><i></i>残り</span><span><i class="off"></i>飲んだ・使った</span></div></div>
       <div class="form-grid">
         <div class="field"><label for="nextVisit">次の受診予約日</label><input type="date" id="nextVisit" data-set="nextVisit" value="${state.nextVisit}"></div>
         <div class="field"><span class="lab">受診の目安</span><div class="small" style="padding-top:8px">${inv.runOut ? `${fmt(add(inv.runOut, -S.warnDays))}〜${fmt(add(inv.runOut, -1))} の間` : '—'}</div></div>
