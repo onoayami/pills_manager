@@ -280,6 +280,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
       setup: !!s.setup,
       startDate: isDate(s.startDate) ? s.startDate : todayStr(),
       settings: { ...DEF, ...(s.settings || {}) },
+      invMode: s.invMode === 'start' ? 'start' : 'recount',
       inv: s.inv && isDate(s.inv.date) ? { date: s.inv.date, unopened: +s.inv.unopened || 0, current: +s.inv.current || 0 } : { date: todayStr(), unopened: 0, current: 0 },
       receipts: Array.isArray(s.receipts) ? s.receipts.filter(r => r && isDate(r.date)) : [],
       days: s.days && typeof s.days === 'object' ? s.days : {},
@@ -707,7 +708,15 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
           <label class="check"><input type="checkbox" id="sNew" data-set="newSheetAfterBreak" ${S.newSheetAfterBreak ? 'checked' : ''}><span>休薬後は新しいシートから再開する（開封中シートの残りは在庫から外す）</span></label>
         </div>
         <div class="sect">
-          <h2>在庫を数え直す</h2>
+          <h2>在庫の計算</h2>
+          <p class="small muted" style="margin:0">第1周期の開始日（${fmt(state.startDate)}）に持っていたシート数から、飲んだ日数と余分に使った錠数を引いて計算します。${state.invMode === 'start' ? '' : '<b>今は「数え直した数」で計算しています。</b>'}</p>
+          <div class="form-grid">
+            <div class="field"><label for="stU">開始日に持っていたシート数</label><input type="number" id="stU" min="1" max="20" value="${state.invMode === 'start' ? state.inv.unopened : state.settings.sheetsPerVisit}" inputmode="numeric"></div>
+          </div>
+          <button class="btn outline sm" data-act="fromstart">開始日から計算し直す</button>
+        </div>
+        <div class="sect">
+          <h2>在庫を数え直す（手動）</h2>
           <p class="small muted" style="margin:0">今日の分を飲む前の数を入力します（もう飲んだ場合は1錠足した数）。計算がずれたときに使ってください。現在の基準日: ${fmt(state.inv.date)}</p>
           <div class="form-grid">
             <div class="field"><label for="rcU">未開封のシート</label><input type="number" id="rcU" min="0" max="20" value="${state.inv.unopened}" inputmode="numeric"></div>
@@ -749,11 +758,8 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
       <h2>今の状況を入力</h2>
       <div class="field"><label for="obStart">第1周期の開始日（1錠目を飲んだ日）</label><input type="date" id="obStart" value="${T}" max="${add(T, 30)}"></div>
       <p class="small muted" style="margin:0">その日から毎日、自動で「服用済み」になります。飲まなかった日だけ後からチェックを外してください。</p>
-      <div class="form-grid">
-        <div class="field"><label for="obU">未開封のシート</label><input type="number" id="obU" min="0" max="20" value="2" inputmode="numeric"></div>
-        <div class="field"><label for="obC">開封中シートの残り錠数</label><input type="number" id="obC" min="0" max="28" value="28" inputmode="numeric"></div>
-      </div>
-      <p class="small muted" style="margin:0">錠数は今日の分を飲む前の数です。1シート28錠で計算します（設定で変更できます）。</p>
+      <div class="field"><label for="obU">その日（1錠目を飲む前）に持っていたシート数</label><input type="number" id="obU" min="1" max="20" value="3" inputmode="numeric"></div>
+      <p class="small muted" style="margin:0">1日目に新しいシートを開けて、そこから毎日1錠ずつ減る計算です。1シート28錠（設定で変更できます）。その後にもらった分は「受け取りを記録」で追加します。</p>
       <button class="btn primary" data-act="onboard">はじめる</button>
     </section>
     <footer class="foot">${syncHtml()}</footer>`;
@@ -852,9 +858,14 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         else { armed = key; render(); }
         break;
       }
+      case 'fromstart': {
+        state.invMode = 'start';
+        state.inv = { date: state.startDate, unopened: num('stU', 1, 20), current: 0 };
+        commit(); toast('開始日から計算し直しました'); break;
+      }
       case 'recount': {
+        state.invMode = 'recount';
         state.inv = { date: todayStr(), unopened: num('rcU', 0, 20), current: num('rcC', 0, state.settings.perSheet) };
-        state.receipts = state.receipts.filter(r => r.date > state.inv.date);
         commit(); toast('在庫を保存しました'); break;
       }
       case 'copy': {
@@ -887,7 +898,8 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         if (!isDate(start)) { toast('1錠目の日を選んでください'); break; }
         state = normalize({
           setup: true, startDate: start, days: {},
-          inv: { date: T, unopened: num('obU', 0, 20), current: num('obC', 0, 28) }
+          invMode: 'start',
+          inv: { date: start, unopened: num('obU', 1, 20), current: 0 }
         });
         viewCycle = null; commit(); break;
       }
@@ -901,7 +913,12 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
     const el = ev.target, key = el.dataset && el.dataset.set;
     if (!key || !state) return;
     const S = state.settings;
-    if (key === 'startDate') { if (isDate(el.value)) { state.startDate = el.value; viewCycle = null; } }
+    if (key === 'startDate') {
+      if (isDate(el.value)) {
+        state.startDate = el.value; viewCycle = null;
+        if (state.invMode === 'start') state.inv.date = el.value;
+      }
+    }
     else if (key === 'nextVisit') state.nextVisit = isDate(el.value) ? el.value : '';
     else if (key === 'doseTime') S.doseTime = el.value || '';
     else if (key === 'autoTake' && !el.checked && S.autoTake) {
