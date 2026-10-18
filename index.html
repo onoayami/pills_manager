@@ -698,7 +698,6 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
       <div class="inner">
         <div class="sect">
           <div class="form-grid">
-            <div class="field"><label for="sStart">第1周期の開始日</label><input type="date" id="sStart" data-set="startDate" value="${state.startDate}"></div>
             <div class="field"><label for="sTime">服用時刻（この時刻に自動チェック）</label><input type="time" id="sTime" data-set="doseTime" value="${esc(S.doseTime)}"></div>
             <div class="field"><label for="sPer">1シートの錠数</label><input type="number" id="sPer" data-set="perSheet" min="1" max="60" value="${S.perSheet}" inputmode="numeric"></div>
             <div class="field"><label for="sVisit">1回の受診でもらえる枚数</label><input type="number" id="sVisit" data-set="sheetsPerVisit" min="1" max="12" value="${S.sheetsPerVisit}" inputmode="numeric"></div>
@@ -710,11 +709,11 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         </div>
         <div class="sect">
           <h2>在庫の計算</h2>
-          <p class="small muted" style="margin:0">第1周期の開始日（${fmt(state.startDate)}）に持っていたシート数から、飲んだ日数と余分に使った錠数を引いて計算します。${state.invMode === 'start' ? '' : '<b>今は「数え直した数」で計算しています。</b>'}</p>
+          <p class="small muted" style="margin:0">記録を始めた日（${fmt(state.startDate)}）に持っていたシート数に、受け取り記録の分を足し、飲んだ日数と余分に使った錠数を引いて計算します。${state.invMode === 'start' ? '' : '<b>今は「数え直した数」で計算しています。</b>'}</p>
           <div class="form-grid">
-            <div class="field"><label for="stU">開始日に持っていたシート数</label><input type="number" id="stU" min="1" max="20" value="${state.invMode === 'start' ? state.inv.unopened : state.settings.sheetsPerVisit}" inputmode="numeric"></div>
+            <div class="field"><label for="stU">記録を始めた日に持っていたシート数</label><input type="number" id="stU" min="1" max="20" value="${state.invMode === 'start' ? state.inv.unopened : state.settings.sheetsPerVisit}" inputmode="numeric"></div>
           </div>
-          <button class="btn outline sm" data-act="fromstart">開始日から計算し直す</button>
+          <button class="btn outline sm" data-act="fromstart">この数で計算し直す</button>
         </div>
         <div class="sect">
           <h2>在庫を数え直す（手動）</h2>
@@ -862,7 +861,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
       case 'fromstart': {
         state.invMode = 'start';
         state.inv = { date: state.startDate, unopened: num('stU', 1, 20), current: 0 };
-        commit(); toast('開始日から計算し直しました'); break;
+        commit(); toast('計算し直しました'); break;
       }
       case 'recount': {
         state.invMode = 'recount';
