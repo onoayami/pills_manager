@@ -160,7 +160,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; position: relative; }
 .stats { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
-.stats b { font-family: var(--font-display); font-size: 18px; color: var(--ink); font-variant-numeric: tabular-nums; margin-right: 2px; }
+.stats b { font-family: var(--font-display); font-size: 18px; color: var(--ink); font-variant-numeric: tabular-nums; margin: 0 2px; }
 
 /* Stock */
 .stock-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -179,6 +179,11 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .history > summary svg { width: 16px; height: 16px; transition: transform .2s; }
 .history[open] > summary svg { transform: rotate(180deg); }
 .history-in { display: flex; flex-direction: column; gap: 12px; padding-top: 10px; }
+.rc-btns { display: flex; gap: 6px; flex: none; }
+.rc-edit { flex-wrap: wrap; }
+.rc-edit input[type="date"] { flex: 1 1 140px; width: auto; }
+.rc-edit input[type="number"] { flex: 0 0 70px; width: 70px; }
+.rc-edit-btns { display: flex; gap: 6px; }
 .year-g { display: flex; flex-direction: column; gap: 6px; }
 .year-h { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
 .year-h .muted { font-weight: 500; }
@@ -298,7 +303,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
   let openDate = null;
   let settingsOpen = false;
   let stockOpen = true;
-  let historyOpen = false, rcYear = 'all', rcOrder = 'desc';
+  let historyOpen = false, rcYear = 'all', rcOrder = 'desc', rcEdit = null;
   try { stockOpen = localStorage.getItem(LS + ':stockOpen') !== '0'; } catch {}
   let armed = null;
   let syncMode = 'local';
@@ -624,7 +629,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         <div class="small muted">${sub}</div>
       </div>
       ${c.no === 1 ? `<div class="field start-field"><label for="cStart">第1周期の開始日（1錠目を飲んだ日）</label><input type="date" id="cStart" data-set="startDate" value="${state.startDate}" max="${add(T, 60)}"></div>` : ''}
-      <div class="stats"><span><b>${taken}</b>日 服用</span><span><b>${bleed}</b>日 出血</span>${missed ? `<span><b>${missed}</b>日 飲まなかった</span>` : ''}${extra ? `<span><b>${extra}</b>錠 余分に使用</span>` : ''}</div>
+      <div class="stats"><span>飲まなかった <b>${missed}</b>日</span><span>余分に使用 <b>${extra}</b>錠</span>${bleed ? `<span>出血 <b>${bleed}</b>日</span>` : ''}</div>
       ${blocks}
       <div class="legend">
         <span><i style="background:var(--accent)"></i>服用済み</span>
@@ -684,7 +689,11 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         </div>` : ''}
         ${groups.map(g => `<div class="year-g">
           <div class="year-h"><span>${g.y}年</span><span class="muted">${g.items.length}回 ・ 計${g.items.reduce((n, r) => n + (+r.sheets || 0), 0)}シート</span></div>
-          <ul class="list">${g.items.map(r => `<li><span>${fmt(r.date).replace(/^\d{4}\//, '')} ・ ${r.sheets}シート</span><button class="tiny-btn ${armed === 'rc' + r.i ? 'armed' : ''}" data-act="delrc" data-i="${r.i}">${armed === 'rc' + r.i ? 'もう一度押すと削除' : '削除'}</button></li>`).join('')}</ul>
+          <ul class="list">${g.items.map(r => rcEdit === r.i ? `<li class="rc-edit">
+            <input type="date" id="rcEditDate" value="${r.date}" aria-label="受け取った日">
+            <input type="number" id="rcEditSheets" min="1" max="12" value="${r.sheets}" inputmode="numeric" aria-label="シート数">
+            <span class="rc-edit-btns"><button class="tiny-btn" data-act="rcsave" data-i="${r.i}">保存</button><button class="tiny-btn" data-act="rccancel">やめる</button></span>
+          </li>` : `<li><span>${fmt(r.date).replace(/^\d{4}\//, '')} ・ ${r.sheets}シート</span><span class="rc-btns"><button class="tiny-btn" data-act="rcedit" data-i="${r.i}">編集</button><button class="tiny-btn ${armed === 'rc' + r.i ? 'armed' : ''}" data-act="delrc" data-i="${r.i}">${armed === 'rc' + r.i ? 'もう一度押すと削除' : '削除'}</button></span></li>`).join('')}</ul>
         </div>`).join('')}
       </div>
     </details>`;
@@ -852,7 +861,17 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         state.receipts.push({ date, sheets, after: date === state.inv.date ? 1 : 0 });
         commit(); toast(`${sheets}シートを追加しました`); break;
       }
+      case 'rcedit': rcEdit = +b.dataset.i; render(); break;
+      case 'rccancel': rcEdit = null; render(); break;
+      case 'rcsave': {
+        const date = document.getElementById('rcEditDate').value;
+        if (!isDate(date)) { toast('受け取った日を選んでください'); break; }
+        const r = state.receipts[+b.dataset.i];
+        if (r) { r.date = date; r.sheets = num('rcEditSheets', 1, 12); r.after = date === state.inv.date ? 1 : 0; }
+        rcEdit = null; commit(); toast('受け取り記録を直しました'); break;
+      }
       case 'delrc': {
+        rcEdit = null;
         const key = 'rc' + b.dataset.i;
         if (armed === key) { state.receipts.splice(+b.dataset.i, 1); armed = null; commit(); }
         else { armed = key; render(); }
