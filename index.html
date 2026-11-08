@@ -143,10 +143,11 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .icon-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: transparent; display: inline-flex; align-items: center; justify-content: center; }
 .icon-btn:disabled { opacity: .3; cursor: default; }
 .icon-btn svg { width: 18px; height: 18px; }
-.blk { display: flex; flex-direction: column; gap: 5px; }
-.blk-l { font-size: 11px; color: var(--muted); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.blk { display: grid; grid-template-columns: minmax(0, 1fr) calc(75% - 15px); align-items: center; gap: 12px; }
+.blk-l { font-size: 12px; color: var(--muted); letter-spacing: .04em; font-variant-numeric: tabular-nums; line-height: 1.6; overflow-wrap: anywhere; }
+.blk-l small { display: block; font-size: 10px; }
 /* Keep seven columns; each circle is 1.5 times its original 14-column diameter. */
-.cells { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: calc(75% - 15px); }
+.cells { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: 100%; }
 .cell { position: relative; aspect-ratio: 1; max-width: 100%; border-radius: 50%; border: 0; padding: 0; background: var(--ghost); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--muted); }
 .cell.tk { background: var(--accent); color: var(--accent-ink); }
 .cell.ms { background: transparent; box-shadow: inset 0 0 0 1.5px var(--warn); color: var(--warn); }
@@ -604,7 +605,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         const label = cd === 1 || cd === S.minDay || (e && e.trig) ? cd : '';
         cells += `<button class="${cls.join(' ')}" data-act="open" data-date="${d}" ${d > add(T, 1) ? 'disabled' : ''} aria-label="${fmtP(d)} ${cd}日目 ${status}${rec.b ? ' 出血あり' : ''}">${label}</button>`;
       }
-      blocks += `<div class="blk"><div class="blk-l">${s + 1}–${s + m}日目${S.newSheetAfterBreak && S.perSheet === 28 ? `・${s / S.perSheet + 1}シート目` : ''}</div><div class="cells">${cells}</div></div>`;
+      blocks += `<div class="blk"><div class="blk-l">${s + 1}〜${s + m}日目${S.newSheetAfterBreak && S.perSheet === 28 ? `<small>${s / S.perSheet + 1}シート目</small>` : ''}</div><div class="cells">${cells}</div></div>`;
     }
     if (c.breakStart) {
       let cells = '';
