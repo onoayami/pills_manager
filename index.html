@@ -190,6 +190,12 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .year-h { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
 .year-h .muted { font-weight: 500; }
 .sum-l { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bleed-ask { background: var(--bleed-soft); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.bleed-ask-t { display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.bleed-ask-t > b { color: var(--bleed); }
+.bleed-ask-t .note { font-size: 12px; color: var(--muted); }
+.bleed-ask-b { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.btn.bleed-go { background: var(--bleed); color: var(--surface); }
 .receive { display: flex; flex-direction: column; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
 .stat.warn { background: var(--warn-soft); }
 .stat.warn .v { color: var(--warn); }
@@ -493,7 +499,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         <div class="today">
           <div class="ring">${ring(e.bday / S.breakDays, 'var(--rest)')}<div class="lbl"><span class="big num">${e.bday}</span><span class="of">休薬 / ${S.breakDays}日</span></div></div>
           <div class="today-info">
-            <span class="chip rest">休薬期間</span>
+            <span class="chip rest">${state.manualBreaks.includes(bStart) ? '出血のため休薬中' : '休薬期間'}</span>
             <div class="today-date">${fmt(T)}</div>
             <div class="today-status">今日は飲みません</div>
             <div class="small muted">${fmt(bStart)}〜${fmt(add(resume, -1))}</div>
@@ -501,6 +507,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         </div>
         <div class="msg next"><b>${fmt(resume)}</b> から服用を再開します。出血が続いていても止まっていても再開します。${S.newSheetAfterBreak ? '新しいシートの1錠目から飲み始めます。' : ''}</div>
         <div class="actions"><span></span>${bleedBtn(T, rec)}</div>
+        ${state.manualBreaks.includes(bStart) ? `<button class="btn outline sm" data-act="unbreak" data-date="${bStart}">休薬を取り消して飲み続ける</button>` : ''}
       </section>`;
     }
     const cycStart = add(T, -(e.cday - 1));
@@ -536,6 +543,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         ${takeBtn(T, taken, auto, pending)}
         ${bleedBtn(T, rec)}
       </div>
+      ${rec.b && !rec.nb && !e.trig && e.cday > 1 ? bleedAsk(T, e) : ''}
       ${extraSummary(rec)}
       <button class="btn outline sm" data-act="open" data-date="${T}">錠剤をなくした・余分に飲んだときの記録</button>
     </section>`;
@@ -551,6 +559,16 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
   function extraSummary(rec) {
     if (!rec.extra || !state.settings.showExtra) return '';
     return `<div class="msg small">余分に使った錠剤 <b>${rec.extra}錠</b>${rec.why ? `（${esc(rec.why)}）` : ''}・在庫から差し引いています</div>`;
+  }
+  // Shown on a bleeding day: start a 4-day break from today, or keep taking
+  function bleedAsk(T, e) {
+    const S = state.settings;
+    const resume = add(T, S.breakDays);
+    return `<div class="bleed-ask">
+      <div class="bleed-ask-t"><b>出血のため休薬しますか？</b><span>今日から${S.breakDays}日間飲まずに、<b>${fmt(resume)}</b> から再開します。</span>
+      ${e.cday < S.minDay ? `<span class="note">${S.minDay - 1}日目までは通常は休薬しません。医師の指示があるときに選んでください。</span>` : ''}</div>
+      <div class="bleed-ask-b"><button class="btn sm bleed-go" data-act="bbreak" data-date="${T}">今日から${S.breakDays}日間休薬</button><button class="btn outline sm" data-act="bkeep" data-date="${T}">飲み続ける</button></div>
+    </div>`;
   }
   function bleedBtn(d, rec) {
     return `<button class="btn ${rec.b ? 'bleed-on' : 'outline'}" data-act="bleed" data-date="${d}" aria-pressed="${!!rec.b}">${ICON.drop}${rec.b ? '出血あり' : '出血'}</button>`;
@@ -849,9 +867,11 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
       case 'rcyear': rcYear = b.dataset.y; render(); break;
       case 'rcorder': rcOrder = rcOrder === 'desc' ? 'asc' : 'desc'; render(); break;
       case 'why': { const r = dayRec(d); r.why = b.dataset.why; commit(); break; }
-      case 'bleed': { const r = dayRec(d); r.b = r.b ? 0 : 1; tidy(d); commit(); break; }
+      case 'bleed': { const r = dayRec(d); r.b = r.b ? 0 : 1; if (!r.b) delete r.nb; tidy(d); commit(); break; }
       case 'open': renderSheet(d); break;
       case 'close': closeSheet(); break;
+      case 'bbreak': if (!state.manualBreaks.includes(d)) state.manualBreaks.push(d); commit(); toast('今日から休薬にしました'); break;
+      case 'bkeep': { const r = dayRec(d); r.nb = 1; commit(); break; }
       case 'mbreak': if (!state.manualBreaks.includes(d)) state.manualBreaks.push(d); commit(); toast('休薬を登録しました'); break;
       case 'unbreak': state.manualBreaks = state.manualBreaks.filter(x => x !== d); commit(); break;
       case 'cyc': viewCycle += +b.dataset.d; render(); break;
