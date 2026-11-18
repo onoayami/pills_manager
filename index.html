@@ -196,6 +196,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .bleed-ask-t .note { font-size: 12px; color: var(--muted); }
 .bleed-ask-b { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
 .btn.bleed-go { background: var(--bleed); color: var(--surface); }
+.rest-day { display: flex; align-items: center; justify-content: center; text-align: center; }
 .receive { display: flex; flex-direction: column; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
 .stat.warn { background: var(--warn-soft); }
 .stat.warn .v { color: var(--warn); }
@@ -812,7 +813,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
       ${e && e.phase === 'take' && d <= T ? `<div class="toggle-grid">
         ${takeBtn(d, takenOn(state, d, e, T), takenOn(state, d, e, T) && !rec.t, d === T && !takenOn(state, d, e, T) && !rec.x)}
         ${bleedBtn(d, rec)}</div>` : ''}
-      ${e && e.phase === 'break' && d <= T ? `<div class="toggle-grid"><span class="msg next small">休薬日です</span>${bleedBtn(d, rec)}</div>` : ''}
+      ${e && e.phase === 'break' && d <= T ? `<div class="toggle-grid"><span class="msg next small rest-day">休薬日です</span>${bleedBtn(d, rec)}</div>` : ''}
       ${d > T ? '<div class="msg small">未来の日です。休薬を前もって登録できます。</div>' : ''}
       ${e && e.phase === 'take' && e.cday < S.minDay && rec.b ? `<div class="msg small">${S.minDay - 1}日目までの出血は休薬の判定に数えません。</div>` : ''}
       ${e && d <= T ? `<div class="sect">
