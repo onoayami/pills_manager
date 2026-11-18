@@ -507,7 +507,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
           </div>
         </div>
         <div class="msg next"><b>${fmt(resume)}</b> から服用を再開します。出血が続いていても止まっていても再開します。${S.newSheetAfterBreak ? '新しいシートの1錠目から飲み始めます。' : ''}</div>
-        <div class="actions"><span></span>${bleedBtn(T, rec)}</div>
+        <div class="actions"><span class="msg next rest-day">休薬日です</span>${bleedBtn(T, rec)}</div>
         ${state.manualBreaks.includes(bStart) ? `<button class="btn outline sm" data-act="unbreak" data-date="${bStart}">休薬を取り消して飲み続ける</button>` : ''}
       </section>`;
     }
