@@ -632,7 +632,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         if (d <= T) extra += +rec.extra || 0;
         cells += `<button class="cell brk${rec.b ? ' bl' : ''}${rec.extra && d <= T ? ' ex' : ''}${d === T ? ' now' : ''}" data-act="open" data-date="${d}" ${d > add(T, 1) ? 'disabled' : ''} aria-label="${fmtP(d)} 休薬${i + 1}日目">休</button>`;
       }
-      blocks += `<div class="blk"><div class="blk-l">休薬 ${fmt(c.breakStart)}〜${fmt(add(c.breakStart, S.breakDays - 1))}</div><div class="cells">${cells}</div></div>`;
+      blocks += `<div class="blk"><div class="blk-l">休薬</div><div class="cells">${cells}</div></div>`;
     }
     const ongoing = !c.breakStart || c.breakStart > T;
     const reason = { max: `${S.maxDays}日到達で休薬`, bleed: '出血3日連続で休薬', manual: '手動で休薬' }[c.reason];
