@@ -199,6 +199,10 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .skipped { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-top: -4px; }
 .cell.prev { background: var(--accent); opacity: .35; }
 .cell.lost { background: var(--warn-soft); color: var(--warn); }
+.date-nav { display: flex; align-items: center; gap: 6px; }
+.date-nav .today-date { margin-right: 4px; }
+.icon-btn.dn { width: 30px; height: 30px; border-radius: 8px; }
+.icon-btn.dn svg { width: 15px; height: 15px; }
 .rest-day { display: flex; align-items: center; justify-content: center; text-align: center; }
 .receive { display: flex; flex-direction: column; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
 .stat.warn { background: var(--warn-soft); }
@@ -314,6 +318,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
   let viewCycle = null;
   let openDate = null;
   let settingsOpen = false;
+  let viewDay = null;
   let stockOpen = true;
   let historyOpen = false, rcYear = 'all', rcOrder = 'desc', rcEdit = null;
   try { stockOpen = localStorage.getItem(LS + ':stockOpen') !== '0'; } catch {}
@@ -475,7 +480,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
     if (viewCycle == null || viewCycle > maxNo) viewCycle = curNo;
     app.innerHTML = `
       <header class="top"><h1>ピル服用ノート</h1><span class="date">${fmt(T)}</span></header>
-      ${todayHtml(e, T, tl)}
+      ${viewDay && viewDay < T ? pastHtml(tl.idx[viewDay], viewDay, T) : todayHtml(e, T, tl)}
       ${alertsHtml(T, tl, inv)}
       ${cycleHtml(tl, T, maxNo)}
       ${stockHtml(inv, T)}
@@ -489,6 +494,36 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
     return `<svg viewBox="0 0 116 116" aria-hidden="true"><circle cx="58" cy="58" r="${r}" fill="none" stroke="var(--ghost)" stroke-width="10"/><circle cx="58" cy="58" r="${r}" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(c * Math.min(1, frac)).toFixed(1)} ${c.toFixed(1)}"/></svg>`;
   }
 
+  function dateNav(D, T) {
+    return `<div class="date-nav"><div class="today-date">${fmt(D)}</div>
+      <button class="icon-btn dn" data-act="dprev" aria-label="前の日" ${D <= state.startDate ? 'disabled' : ''}>${ICON.left}</button>
+      <button class="icon-btn dn" data-act="dnext" aria-label="次の日" ${D >= T ? 'disabled' : ''}>${ICON.right}</button></div>`;
+  }
+  // A past day: same card, showing whether that day's pill was taken
+  function pastHtml(e, D, T) {
+    const S = state.settings, rec = state.days[D] || {};
+    if (!e) return `<section class="panel">${dateNav(D, T)}<div class="msg">記録を始める前の日です。</div></section>`;
+    const back = `<button class="btn outline sm" data-act="dtoday">今日に戻る</button>`;
+    if (e.phase === 'break') {
+      return `<section class="panel" aria-label="過去の日">
+        <div class="today">
+          <div class="ring">${ring(e.bday / S.breakDays, 'var(--rest)')}<div class="lbl"><span class="big num">${e.bday}</span><span class="of">休薬 / ${S.breakDays}日</span></div></div>
+          <div class="today-info"><span class="chip rest">過去の記録</span>${dateNav(D, T)}<div class="today-status">休薬日でした</div><div class="small muted">第${e.cycle}周期のあとの休薬</div></div>
+        </div>
+        <div class="actions"><span class="msg next rest-day">休薬日です</span>${bleedBtn(D, rec)}</div>
+        ${back}
+      </section>`;
+    }
+    const tk = takenOn(state, D, e, T);
+    return `<section class="panel" aria-label="過去の日">
+      <div class="today">
+        <div class="ring">${ring(e.cday / S.maxDays, tk ? 'var(--accent)' : 'var(--warn)')}<div class="lbl"><span class="big num">${e.cday}</span><span class="of">日目 / ${S.maxDays}</span></div></div>
+        <div class="today-info"><span class="chip ${tk ? 'take' : 'warn'}">過去の記録</span>${dateNav(D, T)}<div class="today-status">${tk ? '飲みました' : '飲みませんでした'}</div><div class="small muted">第${e.cycle}周期</div></div>
+      </div>
+      <div class="actions">${takeBtn(D, tk, false, false)}${bleedBtn(D, rec)}</div>
+      ${back}
+    </section>`;
+  }
   function todayHtml(e, T, tl) {
     const S = state.settings;
     if (!e) {
@@ -503,7 +538,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
           <div class="ring">${ring(e.bday / S.breakDays, 'var(--rest)')}<div class="lbl"><span class="big num">${e.bday}</span><span class="of">休薬 / ${S.breakDays}日</span></div></div>
           <div class="today-info">
             <span class="chip rest">${state.manualBreaks.includes(bStart) ? '出血のため休薬中' : '休薬期間'}</span>
-            <div class="today-date">${fmt(T)}</div>
+            ${dateNav(T, T)}
             <div class="today-status">今日は飲みません</div>
             <div class="small muted">${fmt(bStart)}〜${fmt(add(resume, -1))}</div>
           </div>
@@ -536,7 +571,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         <div class="ring">${ring(e.cday / S.maxDays, 'var(--accent)')}<div class="lbl"><span class="big num">${e.cday}</span><span class="of">日目 / ${S.maxDays}</span></div></div>
         <div class="today-info">
           ${chip}
-          <div class="today-date">${fmt(T)}</div>
+          ${dateNav(T, T)}
           <div class="today-status">${taken ? (auto ? '今日の分は自動で服用済み' : '今日の分は飲みました') : rec.x ? '今日は飲まなかった' : S.autoTake && S.doseTime ? `服用予定（${esc(S.doseTime)}に服用済みになります）` : '今日の1錠は服用予定です'}</div>
           <div class="small muted">服用時刻 ${S.doseTime ? esc(S.doseTime) : '未設定'} ・ 第${e.cycle}周期</div>
         </div>
@@ -649,8 +684,6 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
     let blocks = '';
     [...sheets].sort((a, b) => a - b).forEach(k => {
       let cells = '', used = 0;
-      // Skipped days use no tablet, so they sit under the sheet instead of taking a slot
-      const skipped = missAt.filter(m => inRange(m.date) && Math.floor(m.g / P) === k);
       for (let g = k * P; g < (k + 1) * P; g++) {
         const sl = slots[g];
         if (sl && (sl.date < T || (sl.date === T && (sl.kind === 'extra' || takenOn(state, T, tl.idx[T], T))))) used++;
@@ -660,7 +693,6 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         else cells += dayCell(sl.date);
       }
       blocks += `<div class="blk"><div class="blk-l">${k + 1}シート目<small>残り${P - used}錠</small></div><div class="cells">${cells}</div></div>`;
-      if (skipped.length) blocks += `<div class="skipped"><span>飲まなかった日</span>${skipped.map(m => `<button class="linkchip" data-act="open" data-date="${m.date}">${fmt(m.date)}</button>`).join('')}</div>`;
     });
     if (c.breakStart) {
       let cells = '';
@@ -907,6 +939,9 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
       case 'bleed': { const r = dayRec(d); r.b = r.b ? 0 : 1; if (!r.b) delete r.nb; tidy(d); commit(); break; }
       case 'open': renderSheet(d); break;
       case 'close': closeSheet(); break;
+      case 'dprev': viewDay = add(viewDay || todayStr(), -1); render(); break;
+      case 'dnext': { const n = add(viewDay || todayStr(), 1); viewDay = n >= todayStr() ? null : n; render(); break; }
+      case 'dtoday': viewDay = null; render(); break;
       case 'bbreak': if (!state.manualBreaks.includes(d)) state.manualBreaks.push(d); commit(); toast('今日から休薬にしました'); break;
       case 'bkeep': { const r = dayRec(d); r.nb = 1; commit(); break; }
       case 'mbreak': if (!state.manualBreaks.includes(d)) state.manualBreaks.push(d); commit(); toast('休薬を登録しました'); break;
