@@ -196,6 +196,9 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .bleed-ask-t .note { font-size: 12px; color: var(--muted); }
 .bleed-ask-b { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
 .btn.bleed-go { background: var(--bleed); color: var(--surface); }
+.skipped { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-top: -4px; }
+.cell.prev { background: var(--accent); opacity: .35; }
+.cell.lost { background: var(--warn-soft); color: var(--warn); }
 .rest-day { display: flex; align-items: center; justify-content: center; text-align: center; }
 .receive { display: flex; flex-direction: column; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
 .stat.warn { background: var(--warn-soft); }
@@ -607,26 +610,58 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
     const end = c.end || add(c.start, S.maxDays - 1);
     const n = diff(c.start, end) + 1;
     let taken = 0, bleed = 0, missed = 0, extra = 0;
-    let blocks = '';
-    const visits = [...new Set(state.receipts.map(r => r.date))].filter(d => d > c.start && d <= end).sort();
-    const cuts = [0, ...visits.map(d => diff(c.start, d)), n];
-    for (let k = 0; k < cuts.length - 1; k++) {
-      const s = cuts[k], m = cuts[k + 1] - s;
-      let cells = '';
-      for (let i = 0; i < m; i++) {
-        const d = add(c.start, s + i), cd = s + i + 1, rec = state.days[d] || {}, e = tl.idx[d];
-        const tk = takenOn(state, d, e, T);
-        if (d <= T) { if (tk) taken++; else if (d < T || rec.x) missed++; if (rec.b) bleed++; extra += +rec.extra || 0; }
-        const cls = ['cell', d > T ? 'fut' : tk ? 'tk' : (d < T || rec.x) ? 'ms' : 'fut'];
-        if (d === T) cls.push('now');
-        if (rec.b) cls.push('bl');
-        if (rec.extra && d <= T) cls.push('ex');
-        const status = d > T ? '予定' : tk ? '服用済み' : (d < T || rec.x) ? '飲まなかった' : '未記録';
-        const label = cd === 1 || cd === S.minDay || (e && e.trig) ? cd : '';
-        cells += `<button class="${cls.join(' ')}" data-act="open" data-date="${d}" ${d > add(T, 1) ? 'disabled' : ''} aria-label="${fmtP(d)} ${cd}日目 ${status}${rec.b ? ' 出血あり' : ''}">${label}</button>`;
-      }
-      blocks += `<div class="blk"><div class="blk-l">${s + 1}〜${s + m}日目${s > 0 ? `<small>${fmt(add(c.start, s))} 受診</small>` : ''}</div><div class="cells">${cells}</div></div>`;
+    for (let d = c.start; d <= end; d = add(d, 1)) {
+      if (d > T) break;
+      const rec = state.days[d] || {}, tk = takenOn(state, d, tl.idx[d], T);
+      if (tk) taken++; else if (d < T || rec.x) missed++;
+      if (rec.b) bleed++;
+      extra += +rec.extra || 0;
     }
+    // Sheet-based layout: every tablet (daily dose or extra) fills the next slot of a 28-slot sheet.
+    // A break leaves the sheet as it is, and the next cycle carries on from the following slot.
+    const P = S.perSheet;
+    const slots = [], missAt = [];
+    for (const x of tl.list) {
+      if (x.date > end) break;
+      const r = state.days[x.date] || {};
+      if (x.phase === 'take') {
+        if (x.date > T || takenOn(state, x.date, x, T) || (x.date === T && !r.x)) slots.push({ date: x.date, kind: 'take' });
+        else missAt.push({ date: x.date, g: slots.length });
+      }
+      if (x.date <= T) for (let i = 0; i < (+r.extra || 0); i++) slots.push({ date: x.date, kind: 'extra' });
+    }
+    const inRange = d => d >= c.start && d <= end;
+    const sheets = new Set();
+    slots.forEach((sl, g) => { if (inRange(sl.date)) sheets.add(Math.floor(g / P)); });
+    missAt.forEach(m => { if (inRange(m.date)) sheets.add(Math.floor(m.g / P)); });
+    const dayCell = d => {
+      const rec = state.days[d] || {}, e = tl.idx[d], cd = e ? e.cday : '';
+      const tk = takenOn(state, d, e, T);
+      const cls = ['cell', d > T ? 'fut' : tk ? 'tk' : (d < T || rec.x) ? 'ms' : 'fut'];
+      if (d === T) cls.push('now');
+      if (rec.b) cls.push('bl');
+      if (rec.extra && d <= T) cls.push('ex');
+      const status = d > T ? '予定' : tk ? '服用済み' : (d < T || rec.x) ? '飲まなかった' : '未記録';
+      const label = cd === 1 || cd === S.minDay || (e && e.trig) ? cd : '';
+      return `<button class="${cls.join(' ')}" data-act="open" data-date="${d}" ${d > add(T, 1) ? 'disabled' : ''} aria-label="${fmtP(d)} ${cd}日目 ${status}${rec.b ? ' 出血あり' : ''}">${label}</button>`;
+    };
+    let hasPrev = false;
+    let blocks = '';
+    [...sheets].sort((a, b) => a - b).forEach(k => {
+      let cells = '', used = 0;
+      // Skipped days use no tablet, so they sit under the sheet instead of taking a slot
+      const skipped = missAt.filter(m => inRange(m.date) && Math.floor(m.g / P) === k);
+      for (let g = k * P; g < (k + 1) * P; g++) {
+        const sl = slots[g];
+        if (sl && (sl.date < T || (sl.date === T && (sl.kind === 'extra' || takenOn(state, T, tl.idx[T], T))))) used++;
+        if (!sl || sl.date > end) cells += '<span class="cell fut" aria-hidden="true"></span>';
+        else if (sl.kind === 'extra') cells += `<button class="cell lost" data-act="open" data-date="${sl.date}" aria-label="${fmtP(sl.date)} 余分に使用">余</button>`;
+        else if (sl.date < c.start) { hasPrev = true; cells += `<button class="cell prev" data-act="open" data-date="${sl.date}" aria-label="${fmtP(sl.date)} 前の周期で服用"></button>`; }
+        else cells += dayCell(sl.date);
+      }
+      blocks += `<div class="blk"><div class="blk-l">${k + 1}シート目<small>残り${P - used}錠</small></div><div class="cells">${cells}</div></div>`;
+      if (skipped.length) blocks += `<div class="skipped"><span>飲まなかった日</span>${skipped.map(m => `<button class="linkchip" data-act="open" data-date="${m.date}">${fmt(m.date)}</button>`).join('')}</div>`;
+    });
     if (c.breakStart) {
       let cells = '';
       for (let i = 0; i < S.breakDays; i++) {
@@ -657,7 +692,8 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         <span><i style="background:var(--accent)"></i>服用済み</span>
         <span><i style="box-shadow:inset 0 0 0 1.5px var(--warn)"></i>飲まなかった</span>
         <span><i style="background:var(--warn);width:8px;height:8px"></i>余分に使用</span>
-        <span><i style="box-shadow:inset 0 0 0 1px var(--line)"></i>予定</span>
+        <span><i style="box-shadow:inset 0 0 0 1px var(--line)"></i>予定・残り</span>
+        ${hasPrev ? '<span><i style="background:var(--accent);opacity:.35"></i>前の周期で服用</span>' : ''}
         <span><i style="background:var(--bleed);width:8px;height:8px"></i>出血</span>
         <span>丸をタップして記録を修正</span>
       </div>
