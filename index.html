@@ -262,7 +262,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
 
 <script>
 (() => {
-  const DEF = { perSheet: 28, sheetsPerVisit: 3, newSheetAfterBreak: true, doseTime: '21:00', autoTake: true, showExtra: false, maxDays: 120, minDay: 25, bleedTrigger: 3, breakDays: 4, warnDays: 14 };
+  const DEF = { perSheet: 28, sheetsPerVisit: 3, doseTime: '21:00', autoTake: true, showExtra: false, maxDays: 120, minDay: 25, bleedTrigger: 3, breakDays: 4, warnDays: 14 };
   const LS = 'doroechi-note-v1';
   const WD = '日月火水木金土';
   const pad = n => String(n).padStart(2, '0');
@@ -387,7 +387,6 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
       if (e.date > T && !now) now = { unopened, cur };
       if (rec[e.date] && e.date !== st.inv.date) unopened += rec[e.date];
       else if (rec[e.date] && e.date === st.inv.date && st.receipts.some(r => r.date === e.date && r.after)) unopened += rec[e.date];
-      if (e.phase === 'take' && e.cday === 1 && e.cycle > 1 && S.newSheetAfterBreak && e.date !== st.inv.date && cur > 0) cur = 0;
       const dr = st.days[e.date] || {};
       const extra = e.date <= T ? Math.max(0, +dr.extra || 0) : 0;
       if (e.phase !== 'take') {
@@ -506,7 +505,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
             <div class="small muted">${fmt(bStart)}〜${fmt(add(resume, -1))}</div>
           </div>
         </div>
-        <div class="msg next"><b>${fmt(resume)}</b> から服用を再開します。出血が続いていても止まっていても再開します。${S.newSheetAfterBreak ? '新しいシートの1錠目から飲み始めます。' : ''}</div>
+        <div class="msg next"><b>${fmt(resume)}</b> から服用を再開します。出血が続いていても止まっていても再開します。使いかけのシートの続きから飲みます。</div>
         <div class="actions"><span class="msg next rest-day">休薬日です</span>${bleedBtn(T, rec)}</div>
         ${state.manualBreaks.includes(bStart) ? `<button class="btn outline sm" data-act="unbreak" data-date="${bStart}">休薬を取り消して飲み続ける</button>` : ''}
       </section>`;
@@ -609,8 +608,10 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
     const n = diff(c.start, end) + 1;
     let taken = 0, bleed = 0, missed = 0, extra = 0;
     let blocks = '';
-    for (let s = 0; s < n; s += S.perSheet) {
-      const m = Math.min(S.perSheet, n - s);
+    const visits = [...new Set(state.receipts.map(r => r.date))].filter(d => d > c.start && d <= end).sort();
+    const cuts = [0, ...visits.map(d => diff(c.start, d)), n];
+    for (let k = 0; k < cuts.length - 1; k++) {
+      const s = cuts[k], m = cuts[k + 1] - s;
       let cells = '';
       for (let i = 0; i < m; i++) {
         const d = add(c.start, s + i), cd = s + i + 1, rec = state.days[d] || {}, e = tl.idx[d];
@@ -624,7 +625,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
         const label = cd === 1 || cd === S.minDay || (e && e.trig) ? cd : '';
         cells += `<button class="${cls.join(' ')}" data-act="open" data-date="${d}" ${d > add(T, 1) ? 'disabled' : ''} aria-label="${fmtP(d)} ${cd}日目 ${status}${rec.b ? ' 出血あり' : ''}">${label}</button>`;
       }
-      blocks += `<div class="blk"><div class="blk-l">${s + 1}〜${s + m}日目${S.newSheetAfterBreak && S.perSheet === 28 ? `<small>${s / S.perSheet + 1}シート目</small>` : ''}</div><div class="cells">${cells}</div></div>`;
+      blocks += `<div class="blk"><div class="blk-l">${s + 1}〜${s + m}日目${s > 0 ? `<small>${fmt(add(c.start, s))} 受診</small>` : ''}</div><div class="cells">${cells}</div></div>`;
     }
     if (c.breakStart) {
       let cells = '';
@@ -735,7 +736,6 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
           </div>
           <label class="check"><input type="checkbox" id="sAuto" data-set="autoTake" ${S.autoTake ? 'checked' : ''}><span>服用日は自動で「服用済み」にする（飲まなかった日だけチェックを外す）</span></label>
           <label class="check"><input type="checkbox" id="sExtra" data-set="showExtra" ${S.showExtra ? 'checked' : ''}><span>今日の画面に「余分に使った錠剤」のお知らせを表示する</span></label>
-          <label class="check"><input type="checkbox" id="sNew" data-set="newSheetAfterBreak" ${S.newSheetAfterBreak ? 'checked' : ''}><span>休薬後は新しいシートから再開する（開封中シートの残りは在庫から外す）</span></label>
         </div>
         <div class="sect">
           <h2>在庫の計算</h2>
@@ -971,7 +971,7 @@ details.panel > .inner { display: flex; flex-direction: column; gap: 18px; paddi
       }
       S.autoTake = false;
     }
-    else if (key === 'newSheetAfterBreak' || key === 'autoTake' || key === 'showExtra') S[key] = el.checked;
+    else if (key === 'autoTake' || key === 'showExtra') S[key] = el.checked;
     else { const v = Math.round(+el.value); if (isFinite(v) && v > 0) S[key] = v; }
     commit();
   });
